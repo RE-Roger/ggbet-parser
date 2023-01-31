@@ -13,7 +13,7 @@ async function getMatches(browserPage, timeout) {
 
     try {
       const data = JSON.parse(params.response.payloadData)
-
+      console.log("received data", data);
       if (data && data.payload && data.payload.data && data.payload.data.matches) {
         const { matches } = data.payload.data
 
@@ -43,7 +43,7 @@ async function getMatches(browserPage, timeout) {
 
               let bo = ''
 
-              // console.log(markets.map(m => Array.isArray(m.specifiers) ? m.specifiers : []).flat())
+              console.log(markets.map(m => Array.isArray(m.specifiers) ? m.specifiers : []).flat())
 
               for (const market of markets) {
                 if (Array.isArray(market.specifiers)) {
