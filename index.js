@@ -179,6 +179,7 @@ async function getLine(discipline, {
   dateTo = null,
   timeout = 5000
 } = {}) {
+  console.log("test")
   if (!discipline) {
     throw new Error('No discipline provided')
   }
