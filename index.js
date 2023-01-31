@@ -85,8 +85,8 @@ async function getMatches(browserPage, timeout) {
 
         debounceResolve()
       }
-    } catch (error) {
-      // console.log(e)
+    } catch (e) {
+      console.log(e)
     }
   }
   const f12 = await browserPage.target().createCDPSession()
