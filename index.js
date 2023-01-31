@@ -1,6 +1,6 @@
 const puppeteer = require('puppeteer')
 
-async function getMatches (browserPage, timeout) {
+async function getMatches(browserPage, timeout) {
   const result = {}
 
   let debounceTimeoutId = null
@@ -124,8 +124,8 @@ list of naming discipline in ggbet
 
 */
 
-async function createBrowserAndPage () {
-  const browser = await puppeteer.launch({ headless: true })
+async function createBrowserAndPage() {
+  const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'], })
   const page = await browser.newPage()
   await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.117 Safari/537.36')
   await page.setViewport({ width: 1920, height: 1080 })
@@ -133,11 +133,11 @@ async function createBrowserAndPage () {
   return { browser, page }
 }
 
-function generateUrl (baseUrl, discipline, { urlPage, dateFrom, dateTo } = {}) {
+function generateUrl(baseUrl, discipline, { urlPage, dateFrom, dateTo } = {}) {
   return `${baseUrl}/en/${discipline}?page=${urlPage}${generateDateFromUrl(dateFrom, dateTo)}`
 }
 
-function generateDateFromUrl (dateFrom, dateTo) {
+function generateDateFromUrl(dateFrom, dateTo) {
   if (dateFrom === null && dateTo === null) {
     return ''
   } else {
@@ -172,7 +172,7 @@ function generateDateFromUrl (dateFrom, dateTo) {
  * @param {number|Date} [options.dateTo]
  * @returns {Promise<object>}
  */
-async function getLine (discipline, {
+async function getLine(discipline, {
   mirrorUrl = 'https://ggbet.com',
   urlPage = 1,
   dateFrom = null,
@@ -206,7 +206,7 @@ async function getLine (discipline, {
  * @param {number|Date} [options.dateTo]
  * @returns {AsyncGenerator<object>}
  */
-async function * getLineUntilDataExist (discipline, {
+async function* getLineUntilDataExist(discipline, {
   mirrorUrl = 'https://ggbet.com',
   fromPage = 1,
   dateFrom = null,
