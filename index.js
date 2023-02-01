@@ -56,7 +56,6 @@ async function getMatches(browserPage, matchListUpdateCb, matchUpdateCb) {
               tournamentId,
               bo
             }
-            console.log(result)
             matchListUpdateCb(result)
           } catch (e) {
             console.log(e)
