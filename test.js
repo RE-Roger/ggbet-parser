@@ -1,7 +1,11 @@
 const ggbetURL = 'https://ggbetily.com'
 const ggbetParser = require('./index.js')
 
-ggbetParser.getLine('starcraft2', {
+ggbetParser.getLine('counter-strike', (matchList) => {
+  console.log(matchList)
+}, (match) => {
+  console.log(match)
+}, {
   mirrorUrl: ggbetURL
 })
   .then(data => {

@@ -1,112 +1,119 @@
 const puppeteer = require('puppeteer')
 
-async function getMatches(browserPage, timeout) {
-  const result = {}
+async function getMatches(browserPage, matchListUpdateCb, matchUpdateCb) {
 
-  let debounceTimeoutId = null
-
-  const handleWebSocketFrameReceived = async (params, resolve) => {
-    const debounceResolve = () => {
-      clearTimeout(debounceTimeoutId)
-      debounceTimeoutId = setTimeout(() => resolve(result), 1000)
-    }
+  const handleWebSocketFrameReceived = async (params, matchListUpdateCb, matchUpdateCb) => {
 
     try {
       const data = JSON.parse(params.response.payloadData)
-      console.log("received data", data);
+      // console.log("received data", data);
       if (data && data.payload && data.payload.data && data.payload.data.matches) {
+        const result = {}
         const { matches } = data.payload.data
 
         for (const match of matches.filter(Boolean)) {
           try {
-            const winnerMarket = match.markets.find(market => /^winner$/i.test(market.name))
-            const mapHandicapMarket = match.markets.find(market => /^map handicap$/i.test(market.name))
+            const { id, fixture } = match
+            const { competitors, score, status, startTime, tournament } = fixture
+            const { markets } = match
+            const { meta } = match
 
-            if (winnerMarket || mapHandicapMarket) {
-              const { id, fixture } = match
-              const { competitors, score, status, startTime, tournament } = fixture
-              const { markets } = match
+            const { value: mapIndex } = meta.find(spec => spec.name === "state_number") || {}
+            const { value: sideAway } = meta.find(spec => spec.name === "side_away") || {}
+            const { value: sideHome } = meta.find(spec => spec.name === "side_home") || {}
+            const { value: bo } = meta.find(spec => spec.name === "bo") || {}
 
-              if (result[id] !== undefined) {
-                const sameMarketsAsWas = !winnerMarket ^ !result[id].homeOdd && !mapHandicapMarket ^ !result[id].handicapOdds
-                const alreadyFulfilled = result[id].homeOdd && result[id].handicapOdds
 
-                if (sameMarketsAsWas || alreadyFulfilled) {
-                  debounceResolve()
-                  break
-                }
-              }
+            // only handle live game
+            if (status != "LIVE" && status != "ENDED") continue;
 
-              const { name: tournamentName, id: tournamentId } = tournament
-              const { name: home } = competitors.find(cmp => /home/i.test(cmp.homeAway))
-              const { name: away } = competitors.find(cmp => /away/i.test(cmp.homeAway))
 
-              let bo = ''
+            const { name: tournamentName, id: tournamentId } = tournament
+            const { name: home, score: homeScore } = competitors.find(cmp => /home/i.test(cmp.homeAway))
+            const { name: away, score: awayScore } = competitors.find(cmp => /away/i.test(cmp.homeAway))
 
-              console.log(markets.map(m => Array.isArray(m.specifiers) ? m.specifiers : []).flat())
+            const { points: homeCurrentPoint } = homeScore.find(score => score.number === parseInt(mapIndex))
+            const { points: awayCurrentPoint } = awayScore.find(score => score.number === parseInt(mapIndex))
 
-              for (const market of markets) {
-                if (Array.isArray(market.specifiers)) {
-                  const { value: bestOf } = market.specifiers.find(spec => spec.name === 'bo') || {}
-
-                  bo = bestOf || ''
-                }
-              }
-
-              result[id] = {
-                id,
-                originalId: id.length > 36 ? id.slice(-36) : id,
-                score,
-                status,
-                startTime: +new Date(startTime),
-                home,
-                away,
-                tournamentName,
-                tournamentId,
-                bo
-              }
-
-              if (winnerMarket) {
-                const { value: homeOdd } = winnerMarket.odds.find(odd => odd.name === home)
-                const { value: awayOdd } = winnerMarket.odds.find(odd => odd.name === away)
-
-                result[id].homeOdd = homeOdd
-                result[id].awayOdd = awayOdd
-              }
-
-              if (mapHandicapMarket) {
-                result[id].handicapOdds = mapHandicapMarket.odds
-              }
+            result[id] = {
+              id,
+              originalId: id.length > 36 ? id.slice(-36) : id,
+              score,
+              status,
+              startTime: +new Date(startTime),
+              home: {
+                name: home,
+                currentPoint: homeCurrentPoint,
+                side: sideHome
+              },
+              away: {
+                name: away,
+                currentPoint: awayCurrentPoint,
+                side: sideAway
+              },
+              mapIndex,
+              tournamentName,
+              tournamentId,
+              bo
             }
+            console.log(result)
+            matchListUpdateCb(result)
           } catch (e) {
             console.log(e)
           }
         }
+      } else if (data && data.payload && data.payload.data && data.payload.data.onUpdateSportEvent) {
+        // update single match data
+        let result = {}
+        match = data.payload.data.onUpdateSportEvent
+        try {
+          const { id, fixture, meta } = match
+          const { competitors, score, status } = fixture
 
-        debounceResolve()
+          const { value: mapIndex } = meta.find(spec => spec.name === "state_number") || {}
+          const { value: sideAway } = meta.find(spec => spec.name === "side_away") || {}
+          const { value: sideHome } = meta.find(spec => spec.name === "side_home") || {}
+
+          const { score: homeScore } = competitors[0]
+          const { score: awayScore } = competitors[1]
+
+          const { points: homeCurrentPoint } = homeScore.find(score => score.number === parseInt(mapIndex))
+          const { points: awayCurrentPoint } = awayScore.find(score => score.number === parseInt(mapIndex))
+
+          result = {
+            id,
+            originalId: id.length > 36 ? id.slice(-36) : id,
+            score,
+            status,
+            home: {
+              currentPoint: homeCurrentPoint,
+              side: sideHome
+            },
+            away: {
+              currentPoint: awayCurrentPoint,
+              side: sideAway
+            },
+            mapIndex,
+          }
+
+          matchUpdateCb(result)
+        } catch (e) {
+          console.log(e)
+        }
+
       }
     } catch (e) {
-      console.log(e)
+      // console.log(e)
     }
   }
   const f12 = await browserPage.target().createCDPSession()
   await f12.send('Network.enable')
   await f12.send('Page.enable')
 
-  let timeoutId
+  await new Promise(() => {
+    f12.on('Network.webSocketFrameReceived', params => handleWebSocketFrameReceived(params, matchListUpdateCb, matchUpdateCb))
+  })
 
-  await Promise.race([
-    new Promise(resolve => {
-      f12.on('Network.webSocketFrameReceived', params => handleWebSocketFrameReceived(params, resolve))
-    }),
-    new Promise(resolve => {
-      timeoutId = setTimeout(resolve, timeout)
-    })
-  ])
-
-  clearTimeout(timeoutId)
-
-  return result
 }
 
 /*
@@ -134,7 +141,7 @@ async function createBrowserAndPage() {
 }
 
 function generateUrl(baseUrl, discipline, { urlPage, dateFrom, dateTo } = {}) {
-  return `${baseUrl}/en/${discipline}?page=${urlPage}${generateDateFromUrl(dateFrom, dateTo)}`
+  return `${baseUrl}/en/${discipline}`
 }
 
 function generateDateFromUrl(dateFrom, dateTo) {
@@ -172,14 +179,13 @@ function generateDateFromUrl(dateFrom, dateTo) {
  * @param {number|Date} [options.dateTo]
  * @returns {Promise<object>}
  */
-async function getLine(discipline, {
+async function getLine(discipline, matchListUpdateCb, matchUpdateCb, {
   mirrorUrl = 'https://ggbet.com',
   urlPage = 1,
   dateFrom = null,
-  dateTo = null,
-  timeout = 5000
+  dateTo = null
 } = {}) {
-  console.log("test")
+
   if (!discipline) {
     throw new Error('No discipline provided')
   }
@@ -190,8 +196,16 @@ async function getLine(discipline, {
 
   await page.goto(url, { waitUntil: 'domcontentloaded' })
 
-  const matches = await getMatches(page, timeout)
 
+
+  await page.waitForXPath("//span[contains(., 'Live')]/parent::div")
+  const [button] = await page.$x("//span[contains(., 'Live')]/parent::div");
+
+  if (button) {
+    await button.click();
+  }
+
+  const matches = await getMatches(page, matchListUpdateCb, matchUpdateCb)
   await page.close()
   await browser.close()
 
