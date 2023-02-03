@@ -203,12 +203,13 @@ async function getLine(discipline, matchListUpdateCb, matchUpdateCb, {
 
 
 
-  await page.waitForXPath("//span[contains(., 'Live')]/parent::div")
+  await page.waitForXPath("//span[contains(., 'Live')]/parent::div", { timeout: 0 })
   const [button] = await page.$x("//span[contains(., 'Live')]/parent::div");
 
   if (button) {
     await button.click();
   }
+  console.log("start get live odds");
 
   const matches = await getMatches(page, matchListUpdateCb, matchUpdateCb)
   await page.close()
