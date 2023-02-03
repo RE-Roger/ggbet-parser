@@ -191,6 +191,12 @@ async function getLine(discipline, matchListUpdateCb, matchUpdateCb, {
 
   const { browser, page } = await createBrowserAndPage()
 
+  await page.setViewport({
+    width: 1098,
+    height: 3196,
+    deviceScaleFactor: 1,
+  });
+
   const url = generateUrl(mirrorUrl, discipline, { urlPage, dateFrom, dateTo })
 
   await page.goto(url, { waitUntil: 'domcontentloaded' })
