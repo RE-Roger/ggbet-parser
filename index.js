@@ -61,6 +61,59 @@ async function getMatches(browserPage, matchListUpdateCb, matchUpdateCb) {
             console.log(e)
           }
         }
+      } else if (data && data.payload && data.payload.data && data.payload.data.sportEventListByFilters) {
+        const result = {}
+        const matches = data.payload.data.sportEventListByFilters.sportEvents
+
+        for (const match of matches.filter(Boolean)) {
+          try {
+            const { id, fixture } = match
+            const { competitors, score, status, startTime, tournament } = fixture
+            const { meta } = match
+
+            const { value: mapIndex } = meta.find(spec => spec.name === "state_number") || {}
+            const { value: sideAway } = meta.find(spec => spec.name === "side_away") || {}
+            const { value: sideHome } = meta.find(spec => spec.name === "side_home") || {}
+            const { value: bo } = meta.find(spec => spec.name === "bo") || {}
+
+
+            // only handle live game
+            if (status != "LIVE" && status != "ENDED") continue;
+
+
+            const { name: tournamentName, id: tournamentId } = tournament
+            const { name: home, score: homeScore } = competitors.find(cmp => /home/i.test(cmp.homeAway))
+            const { name: away, score: awayScore } = competitors.find(cmp => /away/i.test(cmp.homeAway))
+
+            const { points: homeCurrentPoint } = homeScore.find(score => score.number === parseInt(mapIndex))
+            const { points: awayCurrentPoint } = awayScore.find(score => score.number === parseInt(mapIndex))
+
+            result[id] = {
+              id,
+              originalId: id.length > 36 ? id.slice(-36) : id,
+              score,
+              status,
+              startTime: +new Date(startTime),
+              home: {
+                name: home,
+                currentPoint: homeCurrentPoint,
+                side: sideHome
+              },
+              away: {
+                name: away,
+                currentPoint: awayCurrentPoint,
+                side: sideAway
+              },
+              mapIndex,
+              tournamentName,
+              tournamentId,
+              bo
+            }
+            matchListUpdateCb(result)
+          } catch (e) {
+            console.log(e)
+          }
+        }
       } else if (data && data.payload && data.payload.data && data.payload.data.onUpdateSportEvent) {
         // update single match data
         let result = {}
