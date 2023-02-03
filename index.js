@@ -191,17 +191,10 @@ async function getLine(discipline, matchListUpdateCb, matchUpdateCb, {
 
   const { browser, page } = await createBrowserAndPage()
 
-  await page.setViewport({
-    width: 1098,
-    height: 3196,
-    deviceScaleFactor: 1,
-  });
 
   const url = generateUrl(mirrorUrl, discipline, { urlPage, dateFrom, dateTo })
 
   await page.goto(url, { waitUntil: 'domcontentloaded' })
-
-
 
   await page.waitForXPath("//span[contains(., 'Live')]/parent::div", { timeout: 0 })
   const [button] = await page.$x("//span[contains(., 'Live')]/parent::div");
@@ -209,6 +202,13 @@ async function getLine(discipline, matchListUpdateCb, matchUpdateCb, {
   if (button) {
     await button.click();
   }
+
+  await page.setViewport({
+    width: 1098,
+    height: 3196,
+    deviceScaleFactor: 1,
+  });
+
   console.log("start get live odds");
 
   const matches = await getMatches(page, matchListUpdateCb, matchUpdateCb)
