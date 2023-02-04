@@ -119,7 +119,7 @@ async function getMatches(browserPage, matchListUpdateCb, matchUpdateCb) {
         let result = {}
         match = data.payload.data.onUpdateSportEvent
         try {
-          const { id, fixture, meta } = match
+          const { id, fixture, meta, markets } = match
           const { competitors, score, status } = fixture
 
           const { value: mapIndex } = meta.find(spec => spec.name === "state_number") || {}
@@ -137,6 +137,7 @@ async function getMatches(browserPage, matchListUpdateCb, matchUpdateCb) {
             originalId: id.length > 36 ? id.slice(-36) : id,
             score,
             status,
+            markets,
             home: {
               currentPoint: homeCurrentPoint,
               side: sideHome
@@ -183,12 +184,11 @@ list of naming discipline in ggbet
 
 */
 
-async function createBrowserAndPage() {
-  const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'], })
+async function createBrowserAndPage(args) {
+  const browser = await puppeteer.launch({ headless: true, args: args, })
   const page = await browser.newPage()
   await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.117 Safari/537.36')
   await page.setViewport({ width: 1920, height: 1080 })
-
   return { browser, page }
 }
 
@@ -231,7 +231,7 @@ function generateDateFromUrl(dateFrom, dateTo) {
  * @param {number|Date} [options.dateTo]
  * @returns {Promise<object>}
  */
-async function getLine(discipline, matchListUpdateCb, matchUpdateCb, {
+async function getLine(discipline, matchListUpdateCb, matchUpdateCb, args, {
   mirrorUrl = 'https://ggbet.com',
   urlPage = 1,
   dateFrom = null,
@@ -242,7 +242,7 @@ async function getLine(discipline, matchListUpdateCb, matchUpdateCb, {
     throw new Error('No discipline provided')
   }
 
-  const { browser, page } = await createBrowserAndPage()
+  const { browser, page } = await createBrowserAndPage(args)
 
 
   const url = generateUrl(mirrorUrl, discipline, { urlPage, dateFrom, dateTo })
@@ -263,6 +263,21 @@ async function getLine(discipline, matchListUpdateCb, matchUpdateCb, {
   });
 
   console.log("start get live odds");
+
+  // 修改ws请求参数，让其返回完整的market数据
+  await page.evaluate(() => {
+    WebSocket.prototype.oldSend = WebSocket.prototype.send;
+
+    WebSocket.prototype.send = function (data) {
+
+      obj = JSON.parse(data)
+      if (obj.type == "start") {
+        obj.payload.variables.isTopMarkets = false
+      }
+      WebSocket.prototype.oldSend.apply(this, [JSON.stringify(obj)]);
+    };
+  })
+
 
   const matches = await getMatches(page, matchListUpdateCb, matchUpdateCb)
   await page.close()
