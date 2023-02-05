@@ -1,5 +1,123 @@
 const puppeteer = require('puppeteer')
 
+async function getAllMatches(browserPage) {
+  const handleWebSocketFrameReceived = async (params, resolve) => {
+
+    try {
+      const data = JSON.parse(params.response.payloadData)
+      // console.log("received data", data);
+      if (data && data.payload && data.payload.data && data.payload.data.matches) {
+        const result = {}
+        const { matches } = data.payload.data
+
+        for (const match of matches.filter(Boolean)) {
+          try {
+            const { id, fixture, markets, meta } = match
+            const { competitors, score, status, startTime, tournament } = fixture
+
+            const { value: mapIndex } = meta.find(spec => spec.name === "state_number") || {}
+            const { value: sideAway } = meta.find(spec => spec.name === "side_away") || {}
+            const { value: sideHome } = meta.find(spec => spec.name === "side_home") || {}
+            const { value: bo } = meta.find(spec => spec.name === "bo") || {}
+
+
+            const { name: tournamentName, id: tournamentId } = tournament
+            const { name: home, score: homeScore } = competitors.find(cmp => /home/i.test(cmp.homeAway))
+            const { name: away, score: awayScore } = competitors.find(cmp => /away/i.test(cmp.homeAway))
+
+            const { points: homeCurrentPoint } = homeScore.find(score => score.number === parseInt(mapIndex))
+            const { points: awayCurrentPoint } = awayScore.find(score => score.number === parseInt(mapIndex))
+
+            result[id] = {
+              id,
+              originalId: id.length > 36 ? id.slice(-36) : id,
+              score,
+              status,
+              startTime: +new Date(startTime),
+              home: {
+                name: home,
+                currentPoint: homeCurrentPoint,
+                side: sideHome
+              },
+              away: {
+                name: away,
+                currentPoint: awayCurrentPoint,
+                side: sideAway
+              },
+              markets,
+              mapIndex,
+              tournamentName,
+              tournamentId,
+              bo
+            }
+            resolve(result)
+          } catch (e) {
+            console.log(e)
+          }
+        }
+      } else if (data && data.payload && data.payload.data && data.payload.data.sportEventListByFilters) {
+        const result = {}
+        const matches = data.payload.data.sportEventListByFilters.sportEvents
+
+        for (const match of matches.filter(Boolean)) {
+          try {
+            const { id, fixture, markets, meta } = match
+            const { competitors, score, status, startTime, tournament } = fixture
+
+            const { value: mapIndex } = meta.find(spec => spec.name === "state_number") || {}
+            const { value: sideAway } = meta.find(spec => spec.name === "side_away") || {}
+            const { value: sideHome } = meta.find(spec => spec.name === "side_home") || {}
+            const { value: bo } = meta.find(spec => spec.name === "bo") || {}
+
+
+            const { name: tournamentName, id: tournamentId } = tournament
+            const { name: home, score: homeScore } = competitors.find(cmp => /home/i.test(cmp.homeAway))
+            const { name: away, score: awayScore } = competitors.find(cmp => /away/i.test(cmp.homeAway))
+
+            const { points: homeCurrentPoint } = homeScore.find(score => score.number === parseInt(mapIndex))
+            const { points: awayCurrentPoint } = awayScore.find(score => score.number === parseInt(mapIndex))
+
+            result[id] = {
+              id,
+              originalId: id.length > 36 ? id.slice(-36) : id,
+              score,
+              status,
+              startTime: +new Date(startTime),
+              home: {
+                name: home,
+                currentPoint: homeCurrentPoint,
+                side: sideHome
+              },
+              away: {
+                name: away,
+                currentPoint: awayCurrentPoint,
+                side: sideAway
+              },
+              mapIndex,
+              markets,
+              tournamentName,
+              tournamentId,
+              bo
+            }
+            resolve(result)
+          } catch (e) {
+            console.log(e)
+          }
+        }
+      }
+    } catch (e) {
+      // console.log(e)
+    }
+  }
+  const f12 = await browserPage.target().createCDPSession()
+  await f12.send('Network.enable')
+  await f12.send('Page.enable')
+
+  await new Promise((resolve) => {
+    f12.on('Network.webSocketFrameReceived', params => handleWebSocketFrameReceived(params, resolve))
+  })
+}
+
 async function getMatches(browserPage, matchListUpdateCb, matchUpdateCb) {
 
   const handleWebSocketFrameReceived = async (params, matchListUpdateCb, matchUpdateCb) => {
@@ -192,50 +310,22 @@ async function createBrowserAndPage(args) {
   return { browser, page }
 }
 
-function generateUrl(baseUrl, discipline, { urlPage, dateFrom, dateTo } = {}) {
+function generateUrl(baseUrl, discipline) {
   return `${baseUrl}/en/${discipline}`
 }
 
-function generateDateFromUrl(dateFrom, dateTo) {
-  if (dateFrom === null && dateTo === null) {
-    return ''
-  } else {
-    // date format - YYYY-MM-DD
-    let dateFromUrlString = ''
-    if (dateFrom != null) {
-      dateFrom = new Date(dateFrom)
-      const M = (dateFrom.getMonth() + 1).toString().padStart(2, '0')
-      const D = dateFrom.getDate().toString().padStart(2, '0')
-      const Y = dateFrom.getFullYear()
-      dateFromUrlString += `&dateFrom=${Y}-${M}-${D}`
-    }
-
-    if (dateTo != null) {
-      dateTo = new Date(dateTo)
-      const M = (dateTo.getMonth() + 1).toString().padStart(2, '0')
-      const D = dateTo.getDate().toString().padStart(2, '0')
-      const Y = dateTo.getFullYear()
-      dateFromUrlString += `&dateTo=${Y}-${M}-${D}`
-    }
-    return dateFromUrlString
-  }
-}
 
 /**
  *
  * @param {string} discipline
- * @param {object} [options]
+ * @param {function} [matchListUpdateCb]
+ * @param {function} [matchUpdateCb]
+ * @param {object} [args]
  * @param {string} [options.mirrorUrl='https://ggbet.com/en']
- * @param {number} [options.urlPage=1]
- * @param {number|Date} [options.dateFrom]
- * @param {number|Date} [options.dateTo]
  * @returns {Promise<object>}
  */
-async function getLine(discipline, matchListUpdateCb, matchUpdateCb, args, {
+async function getLiveLine(discipline, matchListUpdateCb, matchUpdateCb, args, {
   mirrorUrl = 'https://ggbet.com',
-  urlPage = 1,
-  dateFrom = null,
-  dateTo = null
 } = {}) {
 
   if (!discipline) {
@@ -244,8 +334,7 @@ async function getLine(discipline, matchListUpdateCb, matchUpdateCb, args, {
 
   const { browser, page } = await createBrowserAndPage(args)
 
-
-  const url = generateUrl(mirrorUrl, discipline, { urlPage, dateFrom, dateTo })
+  const url = generateUrl(mirrorUrl, discipline)
 
   await page.goto(url, { waitUntil: 'domcontentloaded' })
 
@@ -287,52 +376,64 @@ async function getLine(discipline, matchListUpdateCb, matchUpdateCb, args, {
 }
 
 /**
+ *
  * @param {string} discipline
- * @param {object} [options]
+ * @param {function} [matchListUpdateCb]
+ * @param {function} [matchUpdateCb]
+ * @param {object} [args]
  * @param {string} [options.mirrorUrl='https://ggbet.com/en']
- * @param {number} [options.fromPage=1]
- * @param {number|Date} [options.dateFrom]
- * @param {number|Date} [options.dateTo]
- * @returns {AsyncGenerator<object>}
+ * @returns {Promise<object>}
  */
-async function* getLineUntilDataExist(discipline, {
+async function getAllLine(discipline, matchListUpdateCb, matchUpdateCb, args, {
   mirrorUrl = 'https://ggbet.com',
-  fromPage = 1,
-  dateFrom = null,
-  dateTo = null,
-  chunkTimeout = 5000
 } = {}) {
   if (!discipline) {
     throw new Error('No discipline provided')
   }
 
-  const { browser, page } = await createBrowserAndPage()
+  const { browser, page } = await createBrowserAndPage(args)
+  const url = generateUrl(mirrorUrl, discipline)
 
-  fromPage = fromPage - 1
+  await page.goto(url, { waitUntil: 'domcontentloaded' })
 
-  while (++fromPage) {
-    try {
-      const url = generateUrl(mirrorUrl, discipline, { urlPage: fromPage, dateFrom, dateTo })
+  await page.waitForXPath("//span[contains(., 'Upcoming')]/parent::div", { timeout: 0 })
+  const [button] = await page.$x("//span[contains(., 'Upcoming')]/parent::div");
 
-      await page.goto(url, { waitUntil: 'domcontentloaded' })
-
-      const matches = await getMatches(page, chunkTimeout)
-
-      if (!matches || Object.keys(matches).length === 0 || matches.error) {
-        break
-      } else {
-        yield matches
-      }
-    } catch (e) {
-      break
-    }
+  if (button) {
+    await button.click();
   }
 
+  await page.setViewport({
+    width: 1098,
+    height: 3196,
+    deviceScaleFactor: 1,
+  });
+
+  console.log("start get all odds");
+
+  // 修改ws请求参数，让其返回完整的market数据
+  await page.evaluate(() => {
+    WebSocket.prototype.oldSend = WebSocket.prototype.send;
+
+    WebSocket.prototype.send = function (data) {
+
+      obj = JSON.parse(data)
+      if (obj.type == "start") {
+        obj.payload.variables.isTopMarkets = false
+      }
+      WebSocket.prototype.oldSend.apply(this, [JSON.stringify(obj)]);
+    };
+  })
+
+
+  const matches = await getAllMatches(page)
   await page.close()
   await browser.close()
+
+  return matches
 }
 
 module.exports = {
-  getLine,
-  getLineUntilDataExist
+  getLiveLine,
+  getAllLine
 }
