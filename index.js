@@ -384,7 +384,7 @@ async function getLiveLine(discipline, matchListUpdateCb, matchUpdateCb, args, {
  * @param {string} [options.mirrorUrl='https://ggbet.com/en']
  * @returns {Promise<object>}
  */
-async function getAllLine(discipline, matchListUpdateCb, matchUpdateCb, args, {
+async function getAllLine(discipline, args, {
   mirrorUrl = 'https://ggbet.com',
 } = {}) {
   if (!discipline) {
