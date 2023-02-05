@@ -1,53 +1,55 @@
 const puppeteer = require('puppeteer')
 
-async function getAllMatches(browserPage) {
-  const handleMatched = function (matches, result) {
-    for (const match of matches.filter(Boolean)) {
-      try {
-        const { id, fixture, markets, meta } = match
-        const { competitors, score, status, startTime, tournament } = fixture
+const handleMatched = function (matches, result) {
+  for (const match of matches.filter(Boolean)) {
+    try {
+      const { id, fixture, markets, meta } = match
+      const { competitors, score, status, startTime, tournament } = fixture
 
-        const { value: mapIndex } = meta.find(spec => spec.name === "state_number") || {}
-        const { value: sideAway } = meta.find(spec => spec.name === "side_away") || {}
-        const { value: sideHome } = meta.find(spec => spec.name === "side_home") || {}
-        const { value: bo } = meta.find(spec => spec.name === "bo") || {}
+      const { value: mapIndex } = meta.find(spec => spec.name === "state_number") || {}
+      const { value: sideAway } = meta.find(spec => spec.name === "side_away") || {}
+      const { value: sideHome } = meta.find(spec => spec.name === "side_home") || {}
 
-        const filtered_markets = markets.filter((item) => { return item.id == "7m1" || item.id == "7m2" })
+      const { value: bo } = meta.find(spec => spec.name === "bo") || {}
 
-        const { name: tournamentName, id: tournamentId } = tournament
-        const { name: home, score: homeScore } = competitors.find(cmp => /home/i.test(cmp.homeAway))
-        const { name: away, score: awayScore } = competitors.find(cmp => /away/i.test(cmp.homeAway))
+      const filtered_markets = markets.filter((item) => { return item.id == "7m1" || item.id == "7m2" })
 
-        const { points: homeCurrentPoint } = homeScore.find(score => score.number === parseInt(mapIndex))
-        const { points: awayCurrentPoint } = awayScore.find(score => score.number === parseInt(mapIndex))
+      const { name: tournamentName, id: tournamentId } = tournament
+      const { name: home, score: homeScore } = competitors.find(cmp => /home/i.test(cmp.homeAway))
+      const { name: away, score: awayScore } = competitors.find(cmp => /away/i.test(cmp.homeAway))
 
-        result[id] = {
-          id,
-          originalId: id.length > 36 ? id.slice(-36) : id,
-          score,
-          status,
-          startTime: +new Date(startTime),
-          home: {
-            name: home,
-            currentPoint: homeCurrentPoint,
-            side: sideHome
-          },
-          away: {
-            name: away,
-            currentPoint: awayCurrentPoint,
-            side: sideAway
-          },
-          markets: filtered_markets,
-          mapIndex,
-          tournamentName,
-          tournamentId,
-          bo
-        }
-      } catch (e) {
-        console.log(e)
+      const { points: homeCurrentPoint } = homeScore.find(score => score.number === parseInt(mapIndex))
+      const { points: awayCurrentPoint } = awayScore.find(score => score.number === parseInt(mapIndex))
+
+      result[id] = {
+        id,
+        originalId: id.length > 36 ? id.slice(-36) : id,
+        score,
+        status,
+        startTime: +new Date(startTime),
+        home: {
+          name: home,
+          currentPoint: homeCurrentPoint,
+          side: sideHome
+        },
+        away: {
+          name: away,
+          currentPoint: awayCurrentPoint,
+          side: sideAway
+        },
+        markets: filtered_markets,
+        mapIndex,
+        tournamentName,
+        tournamentId,
+        bo
       }
+    } catch (e) {
+      console.log(e)
     }
   }
+}
+
+async function getAllMatches(browserPage) {
   const handleWebSocketFrameReceived = async (params, resolve) => {
     const result = {}
     try {
@@ -86,110 +88,19 @@ async function getMatches(browserPage, matchListUpdateCb, matchUpdateCb) {
       if (data && data.payload && data.payload.data && data.payload.data.matches) {
         const result = {}
         const { matches } = data.payload.data
-
-        for (const match of matches.filter(Boolean)) {
-          try {
-            const { id, fixture } = match
-            const { competitors, score, status, startTime, tournament } = fixture
-            const { markets } = match
-            const { meta } = match
-
-            const { value: mapIndex } = meta.find(spec => spec.name === "state_number") || {}
-            const { value: sideAway } = meta.find(spec => spec.name === "side_away") || {}
-            const { value: sideHome } = meta.find(spec => spec.name === "side_home") || {}
-            const { value: bo } = meta.find(spec => spec.name === "bo") || {}
-
-
-            // only handle live game
-            if (status != "LIVE" && status != "ENDED") continue;
-
-
-            const { name: tournamentName, id: tournamentId } = tournament
-            const { name: home, score: homeScore } = competitors.find(cmp => /home/i.test(cmp.homeAway))
-            const { name: away, score: awayScore } = competitors.find(cmp => /away/i.test(cmp.homeAway))
-
-            const { points: homeCurrentPoint } = homeScore.find(score => score.number === parseInt(mapIndex))
-            const { points: awayCurrentPoint } = awayScore.find(score => score.number === parseInt(mapIndex))
-
-            result[id] = {
-              id,
-              originalId: id.length > 36 ? id.slice(-36) : id,
-              score,
-              status,
-              startTime: +new Date(startTime),
-              home: {
-                name: home,
-                currentPoint: homeCurrentPoint,
-                side: sideHome
-              },
-              away: {
-                name: away,
-                currentPoint: awayCurrentPoint,
-                side: sideAway
-              },
-              mapIndex,
-              tournamentName,
-              tournamentId,
-              bo
-            }
-            matchListUpdateCb(result)
-          } catch (e) {
-            console.log(e)
-          }
-        }
+        handleMatched(matches, result)
+        const asArray = Object.entries(result);
+        const filtered = asArray.filter(([id, item]) => { return item.status == "LIVE" })
+        const filtered_result = Object.fromEntries(filtered);
+        matchListUpdateCb(filtered_result)
       } else if (data && data.payload && data.payload.data && data.payload.data.sportEventListByFilters) {
         const result = {}
         const matches = data.payload.data.sportEventListByFilters.sportEvents
-
-        for (const match of matches.filter(Boolean)) {
-          try {
-            const { id, fixture } = match
-            const { competitors, score, status, startTime, tournament } = fixture
-            const { meta } = match
-
-            const { value: mapIndex } = meta.find(spec => spec.name === "state_number") || {}
-            const { value: sideAway } = meta.find(spec => spec.name === "side_away") || {}
-            const { value: sideHome } = meta.find(spec => spec.name === "side_home") || {}
-            const { value: bo } = meta.find(spec => spec.name === "bo") || {}
-
-
-            // only handle live game
-            if (status != "LIVE" && status != "ENDED") continue;
-
-
-            const { name: tournamentName, id: tournamentId } = tournament
-            const { name: home, score: homeScore } = competitors.find(cmp => /home/i.test(cmp.homeAway))
-            const { name: away, score: awayScore } = competitors.find(cmp => /away/i.test(cmp.homeAway))
-
-            const { points: homeCurrentPoint } = homeScore.find(score => score.number === parseInt(mapIndex))
-            const { points: awayCurrentPoint } = awayScore.find(score => score.number === parseInt(mapIndex))
-
-            result[id] = {
-              id,
-              originalId: id.length > 36 ? id.slice(-36) : id,
-              score,
-              status,
-              startTime: +new Date(startTime),
-              home: {
-                name: home,
-                currentPoint: homeCurrentPoint,
-                side: sideHome
-              },
-              away: {
-                name: away,
-                currentPoint: awayCurrentPoint,
-                side: sideAway
-              },
-              mapIndex,
-              tournamentName,
-              tournamentId,
-              bo
-            }
-            matchListUpdateCb(result)
-          } catch (e) {
-            console.log(e)
-          }
-        }
+        handleMatched(matches, result)
+        const asArray = Object.entries(result);
+        const filtered = asArray.filter(([id, item]) => { return item.status == "LIVE" })
+        const filtered_result = Object.fromEntries(filtered);
+        matchListUpdateCb(filtered_result)
       } else if (data && data.payload && data.payload.data && data.payload.data.onUpdateSportEvent) {
         // update single match data
         let result = {}
@@ -197,6 +108,8 @@ async function getMatches(browserPage, matchListUpdateCb, matchUpdateCb) {
         try {
           const { id, fixture, meta, markets } = match
           const { competitors, score, status } = fixture
+
+          const filtered_markets = markets.filter((item) => { return item.id == "7m1" || item.id == "7m2" })
 
           const { value: mapIndex } = meta.find(spec => spec.name === "state_number") || {}
           const { value: sideAway } = meta.find(spec => spec.name === "side_away") || {}
@@ -213,7 +126,7 @@ async function getMatches(browserPage, matchListUpdateCb, matchUpdateCb) {
             originalId: id.length > 36 ? id.slice(-36) : id,
             score,
             status,
-            markets,
+            markets: filtered_markets,
             home: {
               currentPoint: homeCurrentPoint,
               side: sideHome
