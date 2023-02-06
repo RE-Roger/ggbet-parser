@@ -129,11 +129,13 @@ async function getMatches(browserPage, matchListUpdateCb, matchUpdateCb) {
             markets: filtered_markets,
             home: {
               currentPoint: homeCurrentPoint,
-              side: sideHome
+              side: sideHome,
+              score: homeScore
             },
             away: {
               currentPoint: awayCurrentPoint,
-              side: sideAway
+              side: sideAway,
+              score: awayScore
             },
             mapIndex,
           }
