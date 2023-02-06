@@ -211,7 +211,7 @@ async function getLiveLine(discipline, matchListUpdateCb, matchUpdateCb, args, {
 
   const url = generateUrl(mirrorUrl, discipline)
 
-  await page.goto(url, { waitUntil: 'domcontentloaded' })
+  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 0 })
 
   // 修改ws请求参数，让其返回完整的market数据
   await page.evaluate(() => {
@@ -269,7 +269,7 @@ async function getAllLine(discipline, args, {
   const { browser, page } = await createBrowserAndPage(args)
   const url = generateUrl(mirrorUrl, discipline)
 
-  await page.goto(url, { waitUntil: 'domcontentloaded' })
+  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 0 })
 
   // 修改ws请求参数，让其返回完整的market数据
   await page.evaluate(() => {
