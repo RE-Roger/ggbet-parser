@@ -54,16 +54,24 @@ async function getAllMatches(browserPage) {
     const result = {}
     try {
       const data = JSON.parse(params.response.payloadData)
-      // console.log("received data", data);
       if (data && data.payload && data.payload.data && data.payload.data.matches) {
         const { matches } = data.payload.data
         handleMatched(matches, result)
+        const asArray = Object.entries(result);
+        const filtered = asArray.filter(([id, item]) => { return item.status == "NOT_STARTED" })
+        const filtered_result = Object.fromEntries(filtered);
+        if (Object.keys(result).length)
+          resolve(filtered_result)
       } else if (data && data.payload && data.payload.data && data.payload.data.sportEventListByFilters) {
         const matches = data.payload.data.sportEventListByFilters.sportEvents
         handleMatched(matches, result)
+        const asArray = Object.entries(result);
+        const filtered = asArray.filter(([id, item]) => { return item.status == "NOT_STARTED" })
+        const filtered_result = Object.fromEntries(filtered);
+        if (Object.keys(result).length)
+          resolve(filtered_result)
       }
-      if (Object.keys(result).length)
-        resolve(result)
+
     } catch (e) {
       // console.log(e)
     }
