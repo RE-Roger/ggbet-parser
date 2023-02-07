@@ -151,8 +151,8 @@ async function getMatches(browserPage, matchListUpdateCb, matchUpdateCb) {
     }
   }
 
-  async function createF12(page) {
-    const f12 = await page.target().createCDPSession()
+  async function createF12() {
+    const f12 = await browserPage.target().createCDPSession()
     await f12.send('Network.enable')
     await f12.send('Page.enable')
     f12.on('Network.webSocketFrameReceived', params => handleWebSocketFrameReceived(params, matchListUpdateCb, matchUpdateCb))
@@ -161,8 +161,11 @@ async function getMatches(browserPage, matchListUpdateCb, matchUpdateCb) {
   await new Promise(async () => {
     await createF12(browserPage)
     setInterval(async () => {
+      const html = await browserPage.content();
+      console.log(html)
       await browserPage.reload();
       await createF12(browserPage);
+
     }, 60000)
   })
 
