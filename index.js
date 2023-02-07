@@ -154,9 +154,13 @@ async function getMatches(browserPage, matchListUpdateCb, matchUpdateCb) {
   await f12.send('Network.enable')
   await f12.send('Page.enable')
 
-  setTimeout(() => {
+  setTimeout(async () => {
     console.log("reload page");
-    browserPage.reload()
+    f12.detach()
+    const f122 = await browserPage.target().createCDPSession()
+    await f122.send('Network.enable')
+    await f122.send('Page.enable')
+    f122.on('Network.webSocketFrameReceived', params => handleWebSocketFrameReceived(params, matchListUpdateCb, matchUpdateCb))
   }, 60000)
 
   await new Promise(() => {
