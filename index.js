@@ -160,13 +160,6 @@ async function getMatches(browserPage, matchListUpdateCb, matchUpdateCb) {
 
   await new Promise(async () => {
     await createF12(browserPage)
-    setInterval(async () => {
-      const html = await browserPage.content();
-      console.log(html)
-      await browserPage.reload();
-      await createF12(browserPage);
-
-    }, 60000)
   })
 
 }
@@ -221,47 +214,53 @@ async function getLiveLine(discipline, matchListUpdateCb, matchUpdateCb, args, {
   if (!discipline) {
     throw new Error('No discipline provided')
   }
-
   const { browser, page } = await createBrowserAndPage(args)
 
-  const url = generateUrl(mirrorUrl, discipline)
+  async function start_page() {
 
-  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 0 })
 
-  // 修改ws请求参数，让其返回完整的market数据
-  await page.evaluate(() => {
-    WebSocket.prototype.oldSend = WebSocket.prototype.send;
+    const url = generateUrl(mirrorUrl, discipline)
 
-    WebSocket.prototype.send = function (data) {
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 0 })
 
-      obj = JSON.parse(data)
-      if (obj.type == "start") {
-        obj.payload.variables.isTopMarkets = false
-      }
-      WebSocket.prototype.oldSend.apply(this, [JSON.stringify(obj)]);
-    };
-  })
+    // 修改ws请求参数，让其返回完整的market数据
+    await page.evaluate(() => {
+      WebSocket.prototype.oldSend = WebSocket.prototype.send;
 
-  await page.waitForXPath("//span[contains(., 'Live')]/parent::div", { timeout: 0 })
-  const [button] = await page.$x("//span[contains(., 'Live')]/parent::div");
+      WebSocket.prototype.send = function (data) {
 
-  if (button) {
-    await button.click();
+        obj = JSON.parse(data)
+        if (obj.type == "start") {
+          obj.payload.variables.isTopMarkets = false
+        }
+        WebSocket.prototype.oldSend.apply(this, [JSON.stringify(obj)]);
+      };
+    })
+
+    await page.waitForXPath("//span[contains(., 'Live')]/parent::div", { timeout: 0 })
+    const [button] = await page.$x("//span[contains(., 'Live')]/parent::div");
+
+    if (button) {
+      await button.click();
+    }
+
+    await page.setViewport({
+      width: 1098,
+      height: 3196,
+      deviceScaleFactor: 1,
+    });
+
   }
-
-  await page.setViewport({
-    width: 1098,
-    height: 3196,
-    deviceScaleFactor: 1,
-  });
-
+  await start_page()
   console.log("start get live odds");
 
+  setInterval(async () => {
+    await start_page()
+  }, 60000)
 
   const matches = await getMatches(page, matchListUpdateCb, matchUpdateCb)
   await page.close()
   await browser.close()
-
   return matches
 }
 
