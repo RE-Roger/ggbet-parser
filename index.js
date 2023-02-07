@@ -154,6 +154,11 @@ async function getMatches(browserPage, matchListUpdateCb, matchUpdateCb) {
   await f12.send('Network.enable')
   await f12.send('Page.enable')
 
+  setTimeout(() => {
+    console.log("reload page");
+    browserPage.reload()
+  }, 60000)
+
   await new Promise(() => {
     f12.on('Network.webSocketFrameReceived', params => handleWebSocketFrameReceived(params, matchListUpdateCb, matchUpdateCb))
   })
