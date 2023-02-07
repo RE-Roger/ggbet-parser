@@ -256,7 +256,7 @@ async function getLiveLine(discipline, matchListUpdateCb, matchUpdateCb, args, {
 
   setInterval(async () => {
     await start_page()
-  }, 60000)
+  }, 1000 * 60 * 60)
 
   const matches = await getMatches(page, matchListUpdateCb, matchUpdateCb)
   await page.close()
