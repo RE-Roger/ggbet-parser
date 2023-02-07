@@ -150,24 +150,25 @@ async function getMatches(browserPage, matchListUpdateCb, matchUpdateCb) {
       // console.log(e)
     }
   }
-  const f12 = await browserPage.target().createCDPSession()
-  await f12.send('Network.enable')
-  await f12.send('Page.enable')
 
-  setTimeout(async () => {
-    console.log("reload page");
-    f12.detach()
-    const f122 = await browserPage.target().createCDPSession()
-    await f122.send('Network.enable')
-    await f122.send('Page.enable')
-    f122.on('Network.webSocketFrameReceived', params => handleWebSocketFrameReceived(params, matchListUpdateCb, matchUpdateCb))
-  }, 60000)
-
-  await new Promise(() => {
+  async function createF12(browserPage) {
+    const f12 = await browserPage.target().createCDPSession()
+    await f12.send('Network.enable')
+    await f12.send('Page.enable')
     f12.on('Network.webSocketFrameReceived', params => handleWebSocketFrameReceived(params, matchListUpdateCb, matchUpdateCb))
+  }
+  
+  await new Promise(async () => {
+    await createF12(browserPage)
+    setInterval(async () => {
+      await browserPage.reload();
+      await createF12();
+    }, 60000)
   })
 
 }
+
+
 
 /*
 
