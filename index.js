@@ -12,7 +12,7 @@ const handleMatched = function (matches, result) {
 
       const { value: bo } = meta.find(spec => spec.name === "bo") || {}
 
-      const filtered_markets = markets.filter((item) => { return item.id == "7m1" || item.id == "7m2" })
+      const filtered_markets = markets.filter((item) => { return item.startsWith("7m") || item.id.startsWith("299h") || item.id.startsWith("300m") })
 
       const { name: tournamentName, id: tournamentId } = tournament
       const { name: home, score: homeScore } = competitors.find(cmp => /home/i.test(cmp.homeAway))
@@ -117,7 +117,7 @@ async function getMatches(browserPage, matchListUpdateCb, matchUpdateCb) {
           const { id, fixture, meta, markets } = match
           const { competitors, score, status } = fixture
 
-          const filtered_markets = markets.filter((item) => { return item.id == "7m1" || item.id == "7m2" })
+          const filtered_markets = markets.filter((item) => { item.startsWith("7m") || item.id.startsWith("299h") || item.id.startsWith("300m") })
 
           const { value: mapIndex } = meta.find(spec => spec.name === "state_number") || {}
           const { value: sideAway } = meta.find(spec => spec.name === "side_away") || {}
