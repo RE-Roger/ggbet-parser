@@ -221,7 +221,7 @@ async function getLiveLine(discipline, matchListUpdateCb, matchUpdateCb, args, {
 
     const url = generateUrl(mirrorUrl, discipline)
 
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 0 })
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 })
 
     // 修改ws请求参数，让其返回完整的market数据
     await page.evaluate(() => {
@@ -237,7 +237,7 @@ async function getLiveLine(discipline, matchListUpdateCb, matchUpdateCb, args, {
       };
     })
 
-    await page.waitForXPath("//span[contains(., 'Live')]/parent::div", { timeout: 0 })
+    await page.waitForXPath("//span[contains(., 'Live')]/parent::div", { timeout: 60000 })
     const [button] = await page.$x("//span[contains(., 'Live')]/parent::div");
 
     if (button) {
@@ -283,7 +283,7 @@ async function getAllLine(discipline, args, {
   const { browser, page } = await createBrowserAndPage(args)
   const url = generateUrl(mirrorUrl, discipline)
 
-  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 0 })
+  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 })
 
   // 修改ws请求参数，让其返回完整的market数据
   await page.evaluate(() => {
@@ -302,7 +302,7 @@ async function getAllLine(discipline, args, {
     };
   })
 
-  await page.waitForXPath("//span[contains(., 'Upcoming')]/parent::div", { timeout: 0 })
+  await page.waitForXPath("//span[contains(., 'Upcoming')]/parent::div", { timeout: 60000 })
   const [button] = await page.$x("//span[contains(., 'Upcoming')]/parent::div");
 
   if (button) {
