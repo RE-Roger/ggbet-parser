@@ -226,6 +226,10 @@ async function getLiveLine(discipline, matchListUpdateCb, matchUpdateCb, args, {
 
   async function start_page() {
 
+    await page.setViewport({
+      width: 1200,
+      height: 800
+    });
 
     const url = generateUrl(mirrorUrl, discipline)
 
@@ -256,12 +260,6 @@ async function getLiveLine(discipline, matchListUpdateCb, matchUpdateCb, args, {
       await button.click();
     }
 
-    await page.setViewport({
-      width: 1098,
-      height: 3196,
-      deviceScaleFactor: 1,
-    });
-
     async function autoScroll(page) {
       await page.evaluate(async () => {
         await new Promise((resolve) => {
@@ -276,10 +274,12 @@ async function getLiveLine(discipline, matchListUpdateCb, matchUpdateCb, args, {
               clearInterval(timer);
               resolve();
             }
-          }, 100);
+          }, 2000);
         });
       });
     }
+
+    await page.waitForXPath("//div[contains(@class, 'tournamentHeader')]", { timeout: 60000 })
 
     await autoScroll(page);
 
