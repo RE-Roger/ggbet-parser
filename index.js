@@ -12,7 +12,7 @@ const handleMatched = function (matches, result) {
 
       const { value: bo } = meta.find(spec => spec.name === "bo") || {}
 
-      const filtered_markets = markets.filter((item) => { return item.id == "7m1" || item.id == "7m2" })
+      const filtered_markets = markets.filter((item) => { return item.startsWith("7m") || item.id.startsWith("299h") || item.id.startsWith("300m") })
 
       const { name: tournamentName, id: tournamentId } = tournament
       const { name: home, score: homeScore } = competitors.find(cmp => /home/i.test(cmp.homeAway))
@@ -117,7 +117,7 @@ async function getMatches(browserPage, matchListUpdateCb, matchUpdateCb) {
           const { id, fixture, meta, markets } = match
           const { competitors, score, status } = fixture
 
-          const filtered_markets = markets.filter((item) => { return item.id == "7m1" || item.id == "7m2" })
+          const filtered_markets = markets.filter((item) => { item.startsWith("7m") || item.id.startsWith("299h") || item.id.startsWith("300m") })
 
           const { value: mapIndex } = meta.find(spec => spec.name === "state_number") || {}
           const { value: sideAway } = meta.find(spec => spec.name === "side_away") || {}
@@ -229,7 +229,7 @@ async function getLiveLine(discipline, matchListUpdateCb, matchUpdateCb, args, {
 
     const url = generateUrl(mirrorUrl, discipline)
 
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 0 })
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 })
 
     // 修改ws请求参数，让其返回完整的market数据
     await page.evaluate(() => {
@@ -249,7 +249,7 @@ async function getLiveLine(discipline, matchListUpdateCb, matchUpdateCb, args, {
       };
     })
 
-    await page.waitForXPath("//span[contains(., 'Live')]/parent::div", { timeout: 0 })
+    await page.waitForXPath("//span[contains(., 'Live')]/parent::div", { timeout: 60000 })
     const [button] = await page.$x("//span[contains(., 'Live')]/parent::div");
 
     if (button) {
@@ -321,7 +321,7 @@ async function getAllLine(discipline, args, {
   const { browser, page } = await createBrowserAndPage(args)
   const url = generateUrl(mirrorUrl, discipline)
 
-  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 0 })
+  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 })
 
   // 修改ws请求参数，让其返回完整的market数据
   await page.evaluate(() => {
@@ -340,7 +340,7 @@ async function getAllLine(discipline, args, {
     };
   })
 
-  await page.waitForXPath("//span[contains(., 'Upcoming')]/parent::div", { timeout: 0 })
+  await page.waitForXPath("//span[contains(., 'Upcoming')]/parent::div", { timeout: 60000 })
   const [button] = await page.$x("//span[contains(., 'Upcoming')]/parent::div");
 
   if (button) {
