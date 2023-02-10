@@ -239,7 +239,11 @@ async function getLiveLine(discipline, matchListUpdateCb, matchUpdateCb, args, {
 
         obj = JSON.parse(data)
         if (obj.type == "start") {
+          // show all market
           obj.payload.variables.isTopMarkets = false
+        } else if (obj.type == "stop") {
+          // do not unsubsribe live odds change
+          return
         }
         WebSocket.prototype.oldSend.apply(this, [JSON.stringify(obj)]);
       };
@@ -256,6 +260,32 @@ async function getLiveLine(discipline, matchListUpdateCb, matchUpdateCb, args, {
       width: 1098,
       height: 3196,
       deviceScaleFactor: 1,
+    });
+
+    async function autoScroll(page) {
+      await page.evaluate(async () => {
+        await new Promise((resolve) => {
+          var totalHeight = 0;
+          var distance = 100;
+          var timer = setInterval(() => {
+            var scrollHeight = document.body.scrollHeight;
+            window.scrollBy(0, distance);
+            totalHeight += distance;
+
+            if (totalHeight >= scrollHeight - window.innerHeight) {
+              clearInterval(timer);
+              resolve();
+            }
+          }, 100);
+        });
+      });
+    }
+
+    await autoScroll(page);
+
+    await page.screenshot({
+      path: 'yoursite.png',
+      fullPage: true
     });
 
   }
