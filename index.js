@@ -117,7 +117,7 @@ async function getMatches(browserPage, matchListUpdateCb, matchUpdateCb) {
           const { id, fixture, meta, markets } = match
           const { competitors, score, status } = fixture
 
-          const filtered_markets = markets.filter((item) => { item.id.startsWith("7m") || item.id.startsWith("299h") || item.id.startsWith("300m") })
+          const filtered_markets = markets.filter((item) => { return item.id.startsWith("7m") || item.id.startsWith("299h") || item.id.startsWith("300m") })
 
           const { value: mapIndex } = meta.find(spec => spec.name === "state_number") || {}
           const { value: sideAway } = meta.find(spec => spec.name === "side_away") || {}
