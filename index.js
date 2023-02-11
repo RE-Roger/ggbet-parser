@@ -159,17 +159,10 @@ async function getMatches(browserPage, matchListUpdateCb, matchUpdateCb) {
     }
   }
 
-  async function createF12() {
-    const f12 = await browserPage.target().createCDPSession()
-    await f12.send('Network.enable')
-    await f12.send('Page.enable')
-    f12.on('Network.webSocketFrameReceived', params => handleWebSocketFrameReceived(params, matchListUpdateCb, matchUpdateCb))
-  }
-
-  await new Promise(async () => {
-    await createF12(browserPage)
-  })
-
+  const f12 = await browserPage.target().createCDPSession()
+  await f12.send('Network.enable')
+  await f12.send('Page.enable')
+  f12.on('Network.webSocketFrameReceived', params => handleWebSocketFrameReceived(params, matchListUpdateCb, matchUpdateCb))
 }
 
 
@@ -234,9 +227,9 @@ async function getLiveLine(discipline, matchListUpdateCb, matchUpdateCb, args, {
     const url = generateUrl(mirrorUrl, discipline)
 
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 })
-
+    getMatches(page, matchListUpdateCb, matchUpdateCb)
     // 修改ws请求参数，让其返回完整的market数据
-    await page.evaluate(() => {
+    page.evaluate(() => {
       WebSocket.prototype.oldSend = WebSocket.prototype.send;
 
       WebSocket.prototype.send = function (data) {
@@ -289,17 +282,14 @@ async function getLiveLine(discipline, matchListUpdateCb, matchUpdateCb, args, {
     });
 
   }
-  await start_page()
+  start_page()
   console.log("start get live odds");
 
   setInterval(async () => {
-    await start_page()
+    start_page()
   }, 1000 * 60 * 60)
 
-  const matches = await getMatches(page, matchListUpdateCb, matchUpdateCb)
-  await page.close()
-  await browser.close()
-  return matches
+  await new Promise(async () => { })
 }
 
 /**
