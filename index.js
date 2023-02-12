@@ -287,7 +287,7 @@ async function getLiveLine(discipline, matchListUpdateCb, matchUpdateCb, args, {
 
   setInterval(async () => {
     start_page()
-  }, 1000 * 60 * 60)
+  }, 1000 * 60 * 30)
 
   await new Promise(async () => { })
 }
