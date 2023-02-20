@@ -217,8 +217,74 @@ async function getLiveLine(discipline, matchListUpdateCb, matchUpdateCb, args, {
   }
   const { browser, page } = await createBrowserAndPage(args)
 
-  async function start_page() {
+  async function re_start_page() {
+    console.log("restart get live odds");
 
+    await page.setViewport({
+      width: 1200,
+      height: 800
+    });
+
+    const url = generateUrl(mirrorUrl, discipline)
+
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 })
+    // 修改ws请求参数，让其返回完整的market数据
+    page.evaluate(() => {
+      WebSocket.prototype.oldSend = WebSocket.prototype.send;
+
+      WebSocket.prototype.send = function (data) {
+
+        obj = JSON.parse(data)
+        if (obj.type == "start") {
+          // show all market
+          obj.payload.variables.isTopMarkets = false
+        } else if (obj.type == "stop") {
+          // do not unsubsribe live odds change
+          return
+        }
+        WebSocket.prototype.oldSend.apply(this, [JSON.stringify(obj)]);
+      };
+    })
+
+    await page.waitForXPath("//span[contains(., 'Live')]/parent::div", { timeout: 60000 })
+    const [button] = await page.$x("//span[contains(., 'Live')]/parent::div");
+
+    if (button) {
+      await button.click();
+    }
+
+    async function autoScroll(page) {
+      await page.evaluate(async () => {
+        await new Promise((resolve) => {
+          var totalHeight = 0;
+          var distance = 100;
+          var timer = setInterval(() => {
+            var scrollHeight = document.body.scrollHeight;
+            window.scrollBy(0, distance);
+            totalHeight += distance;
+
+            if (totalHeight >= scrollHeight - window.innerHeight) {
+              clearInterval(timer);
+              resolve();
+            }
+          }, 2000);
+        });
+      });
+    }
+
+    await page.waitForXPath("//div[contains(@class, 'tournamentHeader')]", { timeout: 60000 })
+
+    await autoScroll(page);
+
+    await page.screenshot({
+      path: 'yoursite.png',
+      fullPage: true
+    });
+
+  }
+
+  async function start_page() {
+    console.log("start get live odds");
     await page.setViewport({
       width: 1200,
       height: 800
@@ -283,11 +349,11 @@ async function getLiveLine(discipline, matchListUpdateCb, matchUpdateCb, args, {
 
   }
   start_page()
-  console.log("start get live odds");
+  
 
   setInterval(async () => {
-    start_page()
-  }, 1000 * 60 * 30)
+    re_start_page()
+  }, 1000 * 60 * 5)
 
   await new Promise(async () => { })
 }
