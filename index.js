@@ -15,8 +15,8 @@ const handleMatched = function (matches, result) {
       const filtered_markets = markets.filter((item) => { return item.id.startsWith("7m") || item.id.startsWith("299h") || item.id.startsWith("300m") })
 
       const { name: tournamentName, id: tournamentId } = tournament
-      const { name: home, score: homeScore } = competitors.find(cmp => /home/i.test(cmp.homeAway))
-      const { name: away, score: awayScore } = competitors.find(cmp => /away/i.test(cmp.homeAway))
+      const { name: home, score: homeScore, id: homeId } = competitors.find(cmp => /home/i.test(cmp.homeAway))
+      const { name: away, score: awayScore, id: awayId } = competitors.find(cmp => /away/i.test(cmp.homeAway))
 
       const { points: homeCurrentPoint } = homeScore.find(score => score.number === parseInt(mapIndex))
       const { points: awayCurrentPoint } = awayScore.find(score => score.number === parseInt(mapIndex))
@@ -28,11 +28,13 @@ const handleMatched = function (matches, result) {
         status,
         startTime: +new Date(startTime),
         home: {
+          id: homeId,
           name: home,
           currentPoint: homeCurrentPoint,
           side: sideHome
         },
         away: {
+          id: awayId,
           name: away,
           currentPoint: awayCurrentPoint,
           side: sideAway
@@ -87,8 +89,16 @@ async function getAllMatches(browserPage) {
 }
 
 async function getMatches(browserPage, matchListUpdateCb, matchUpdateCb) {
-
+  matchList = []
   const handleWebSocketFrameReceived = async (params, matchListUpdateCb, matchUpdateCb) => {
+    function get_team_score(id, competitors){
+      const home_comp = competitors.find(competitor => competitor.id === matchList[id].home.id)
+      const away_comp = competitors.find(competitor => competitor.id === matchList[id].away.id)
+      return {
+        home: home_comp.score,
+        away: away_comp.score,
+      }
+    }
 
     try {
       const data = JSON.parse(params.response.payloadData)
@@ -100,7 +110,7 @@ async function getMatches(browserPage, matchListUpdateCb, matchUpdateCb) {
         const asArray = Object.entries(result);
         const filtered = asArray.filter(([id, item]) => { return item.status == "LIVE" })
         const filtered_result = Object.fromEntries(filtered);
-        matchListUpdateCb(filtered_result)
+        matchList = filtered_result
       } else if (data && data.payload && data.payload.data && data.payload.data.sportEventListByFilters) {
         const result = {}
         const matches = data.payload.data.sportEventListByFilters.sportEvents
@@ -108,7 +118,7 @@ async function getMatches(browserPage, matchListUpdateCb, matchUpdateCb) {
         const asArray = Object.entries(result);
         const filtered = asArray.filter(([id, item]) => { return item.status == "LIVE" })
         const filtered_result = Object.fromEntries(filtered);
-        matchListUpdateCb(filtered_result)
+        matchList = filtered_result
       } else if (data && data.payload && data.payload.data && data.payload.data.onUpdateSportEvent) {
         // update single match data
         let result = {}
@@ -123,8 +133,8 @@ async function getMatches(browserPage, matchListUpdateCb, matchUpdateCb) {
           const { value: sideAway } = meta.find(spec => spec.name === "side_away") || {}
           const { value: sideHome } = meta.find(spec => spec.name === "side_home") || {}
 
-          const { score: homeScore } = competitors[0]
-          const { score: awayScore } = competitors[1]
+          const { home: homeScore } = get_team_score(id, competitors)
+          const { away: awayScore } = get_team_score(id, competitors)
 
           const { points: homeCurrentPoint } = homeScore.find(score => score.number === parseInt(mapIndex))
           const { points: awayCurrentPoint } = awayScore.find(score => score.number === parseInt(mapIndex))
@@ -228,6 +238,7 @@ async function getLiveLine(discipline, matchListUpdateCb, matchUpdateCb, args, {
     const url = generateUrl(mirrorUrl, discipline)
 
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 })
+    
     // 修改ws请求参数，让其返回完整的market数据
     page.evaluate(() => {
       WebSocket.prototype.oldSend = WebSocket.prototype.send;
@@ -291,9 +302,9 @@ async function getLiveLine(discipline, matchListUpdateCb, matchUpdateCb, args, {
     });
 
     const url = generateUrl(mirrorUrl, discipline)
-
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 })
     getMatches(page, matchListUpdateCb, matchUpdateCb)
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 })
+    
     // 修改ws请求参数，让其返回完整的market数据
     page.evaluate(() => {
       WebSocket.prototype.oldSend = WebSocket.prototype.send;
