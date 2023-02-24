@@ -155,6 +155,10 @@ async function getMatches(browserPage, matchListUpdateCb, matchUpdateCb) {
         const { matches } = data.payload.data;
         handleMatched(matches, result);
         matchList = result;
+        const asArray = Object.entries(result);
+        const filtered = asArray.filter(([id, item]) => { return item.status == "LIVE" })
+        const filtered_result = Object.fromEntries(filtered);
+        matchListUpdateCb(filtered_result)
       } else if (
         data &&
         data.payload &&
@@ -165,6 +169,10 @@ async function getMatches(browserPage, matchListUpdateCb, matchUpdateCb) {
         const matches = data.payload.data.sportEventListByFilters.sportEvents;
         handleMatched(matches, result);
         matchList = result;
+        const asArray = Object.entries(result);
+        const filtered = asArray.filter(([id, item]) => { return item.status == "LIVE" })
+        const filtered_result = Object.fromEntries(filtered);
+        matchListUpdateCb(filtered_result)
       } else if (
         data &&
         data.payload &&
