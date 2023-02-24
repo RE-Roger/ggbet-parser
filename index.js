@@ -1,25 +1,46 @@
-const puppeteer = require('puppeteer')
+const puppeteer = require("puppeteer");
 
 const handleMatched = function (matches, result) {
   for (const match of matches.filter(Boolean)) {
     try {
-      const { id, fixture, markets, meta } = match
-      const { competitors, score, status, startTime, tournament } = fixture
+      const { id, fixture, markets, meta } = match;
+      const { competitors, score, status, startTime, tournament } = fixture;
 
-      const { value: mapIndex } = meta.find(spec => spec.name === "state_number") || {}
-      const { value: sideAway } = meta.find(spec => spec.name === "side_away") || {}
-      const { value: sideHome } = meta.find(spec => spec.name === "side_home") || {}
+      const { value: mapIndex } =
+        meta.find((spec) => spec.name === "state_number") || {};
+      const { value: sideAway } =
+        meta.find((spec) => spec.name === "side_away") || {};
+      const { value: sideHome } =
+        meta.find((spec) => spec.name === "side_home") || {};
 
-      const { value: bo } = meta.find(spec => spec.name === "bo") || {}
+      const { value: bo } = meta.find((spec) => spec.name === "bo") || {};
 
-      const filtered_markets = markets.filter((item) => { return item.id.startsWith("7m") || item.id.startsWith("299h") || item.id.startsWith("300m") })
+      const filtered_markets = markets.filter((item) => {
+        return (
+          item.id.startsWith("7m") ||
+          item.id.startsWith("299h") ||
+          item.id.startsWith("300m")
+        );
+      });
 
-      const { name: tournamentName, id: tournamentId } = tournament
-      const { name: home, score: homeScore, id: homeId } = competitors.find(cmp => /home/i.test(cmp.homeAway))
-      const { name: away, score: awayScore, id: awayId } = competitors.find(cmp => /away/i.test(cmp.homeAway))
+      const { name: tournamentName, id: tournamentId } = tournament;
+      const {
+        name: home,
+        score: homeScore,
+        id: homeId,
+      } = competitors.find((cmp) => /home/i.test(cmp.homeAway));
+      const {
+        name: away,
+        score: awayScore,
+        id: awayId,
+      } = competitors.find((cmp) => /away/i.test(cmp.homeAway));
 
-      const { points: homeCurrentPoint } = homeScore.find(score => score.number === parseInt(mapIndex))
-      const { points: awayCurrentPoint } = awayScore.find(score => score.number === parseInt(mapIndex))
+      const { points: homeCurrentPoint } = homeScore.find(
+        (score) => score.number === parseInt(mapIndex)
+      );
+      const { points: awayCurrentPoint } = awayScore.find(
+        (score) => score.number === parseInt(mapIndex)
+      );
 
       result[id] = {
         id,
@@ -31,113 +52,156 @@ const handleMatched = function (matches, result) {
           id: homeId,
           name: home,
           currentPoint: homeCurrentPoint,
-          side: sideHome
+          side: sideHome,
         },
         away: {
           id: awayId,
           name: away,
           currentPoint: awayCurrentPoint,
-          side: sideAway
+          side: sideAway,
         },
         markets: filtered_markets,
         mapIndex,
         tournamentName,
         tournamentId,
-        bo
-      }
+        bo,
+      };
     } catch (e) {
-      console.log(e)
+      console.log(e);
     }
   }
-}
+};
 
 async function getAllMatches(browserPage) {
   const handleWebSocketFrameReceived = async (params, resolve) => {
-    const result = {}
+    const result = {};
     try {
-      const data = JSON.parse(params.response.payloadData)
-      if (data && data.payload && data.payload.data && data.payload.data.matches) {
-        const { matches } = data.payload.data
-        handleMatched(matches, result)
+      const data = JSON.parse(params.response.payloadData);
+      if (
+        data &&
+        data.payload &&
+        data.payload.data &&
+        data.payload.data.matches
+      ) {
+        const { matches } = data.payload.data;
+        handleMatched(matches, result);
         const asArray = Object.entries(result);
-        const filtered = asArray.filter(([id, item]) => { return item.status == "NOT_STARTED" })
+        const filtered = asArray.filter(([id, item]) => {
+          return item.status == "NOT_STARTED";
+        });
         const filtered_result = Object.fromEntries(filtered);
-        if (Object.keys(result).length)
-          resolve(filtered_result)
-      } else if (data && data.payload && data.payload.data && data.payload.data.sportEventListByFilters) {
-        const matches = data.payload.data.sportEventListByFilters.sportEvents
-        handleMatched(matches, result)
+        if (Object.keys(result).length) resolve(filtered_result);
+      } else if (
+        data &&
+        data.payload &&
+        data.payload.data &&
+        data.payload.data.sportEventListByFilters
+      ) {
+        const matches = data.payload.data.sportEventListByFilters.sportEvents;
+        handleMatched(matches, result);
         const asArray = Object.entries(result);
-        const filtered = asArray.filter(([id, item]) => { return item.status == "NOT_STARTED" })
+        const filtered = asArray.filter(([id, item]) => {
+          return item.status == "NOT_STARTED";
+        });
         const filtered_result = Object.fromEntries(filtered);
-        if (Object.keys(result).length)
-          resolve(filtered_result)
+        if (Object.keys(result).length) resolve(filtered_result);
       }
-
     } catch (e) {
       // console.log(e)
     }
-  }
-  const f12 = await browserPage.target().createCDPSession()
-  await f12.send('Network.enable')
-  await f12.send('Page.enable')
+  };
+  const f12 = await browserPage.target().createCDPSession();
+  await f12.send("Network.enable");
+  await f12.send("Page.enable");
 
   const result = await new Promise((resolve) => {
-    f12.on('Network.webSocketFrameReceived', params => handleWebSocketFrameReceived(params, resolve))
-  })
-  return result
+    f12.on("Network.webSocketFrameReceived", (params) =>
+      handleWebSocketFrameReceived(params, resolve)
+    );
+  });
+  return result;
 }
 
 async function getMatches(browserPage, matchListUpdateCb, matchUpdateCb) {
-  matchList = []
-  const handleWebSocketFrameReceived = async (params, matchListUpdateCb, matchUpdateCb) => {
-    function get_team_score(id, competitors){
-      const home_comp = competitors.find(competitor => competitor.id === matchList[id].home.id)
-      const away_comp = competitors.find(competitor => competitor.id === matchList[id].away.id)
+  matchList = [];
+  const handleWebSocketFrameReceived = async (
+    params,
+    matchListUpdateCb,
+    matchUpdateCb
+  ) => {
+    function get_team_score(id, competitors) {
+      const home_comp = competitors.find(
+        (competitor) => competitor.id === matchList[id].home.id
+      );
+      const away_comp = competitors.find(
+        (competitor) => competitor.id === matchList[id].away.id
+      );
       return {
         home: home_comp.score,
         away: away_comp.score,
-      }
+      };
     }
 
     try {
-      const data = JSON.parse(params.response.payloadData)
+      const data = JSON.parse(params.response.payloadData);
       // console.log("received data", data);
-      if (data && data.payload && data.payload.data && data.payload.data.matches) {
-        const result = {}
-        const { matches } = data.payload.data
-        handleMatched(matches, result)
-        const asArray = Object.entries(result);
-        const filtered = asArray.filter(([id, item]) => { return item.status == "LIVE" })
-        const filtered_result = Object.fromEntries(filtered);
-        matchList = filtered_result
-      } else if (data && data.payload && data.payload.data && data.payload.data.sportEventListByFilters) {
-        const result = {}
-        const matches = data.payload.data.sportEventListByFilters.sportEvents
-        handleMatched(matches, result)
-        const asArray = Object.entries(result);
-        const filtered = asArray.filter(([id, item]) => { return item.status == "LIVE" })
-        const filtered_result = Object.fromEntries(filtered);
-        matchList = filtered_result
-      } else if (data && data.payload && data.payload.data && data.payload.data.onUpdateSportEvent) {
+      if (
+        data &&
+        data.payload &&
+        data.payload.data &&
+        data.payload.data.matches
+      ) {
+        const result = {};
+        const { matches } = data.payload.data;
+        handleMatched(matches, result);
+        matchList = result;
+      } else if (
+        data &&
+        data.payload &&
+        data.payload.data &&
+        data.payload.data.sportEventListByFilters
+      ) {
+        const result = {};
+        const matches = data.payload.data.sportEventListByFilters.sportEvents;
+        handleMatched(matches, result);
+        matchList = result;
+      } else if (
+        data &&
+        data.payload &&
+        data.payload.data &&
+        data.payload.data.onUpdateSportEvent
+      ) {
         // update single match data
-        let result = {}
-        match = data.payload.data.onUpdateSportEvent
+        let result = {};
+        match = data.payload.data.onUpdateSportEvent;
         try {
-          const { id, fixture, meta, markets } = match
-          const { competitors, score, status } = fixture
+          const { id, fixture, meta, markets } = match;
+          const { competitors, score, status } = fixture;
 
-          const filtered_markets = markets.filter((item) => { return item.id.startsWith("7m") || item.id.startsWith("299h") || item.id.startsWith("300m") })
+          const filtered_markets = markets.filter((item) => {
+            return (
+              item.id.startsWith("7m") ||
+              item.id.startsWith("299h") ||
+              item.id.startsWith("300m")
+            );
+          });
 
-          const { value: mapIndex } = meta.find(spec => spec.name === "state_number") || {}
-          const { value: sideAway } = meta.find(spec => spec.name === "side_away") || {}
-          const { value: sideHome } = meta.find(spec => spec.name === "side_home") || {}
+          const { value: mapIndex } =
+            meta.find((spec) => spec.name === "state_number") || {};
+          const { value: sideAway } =
+            meta.find((spec) => spec.name === "side_away") || {};
+          const { value: sideHome } =
+            meta.find((spec) => spec.name === "side_home") || {};
 
-          const { home: homeScore } = get_team_score(id, competitors)
-          const { away: awayScore } = get_team_score(id, competitors)
+          const { home: homeScore } = get_team_score(id, competitors);
+          const { away: awayScore } = get_team_score(id, competitors);
 
-          const { points: homeCurrentPoint } = homeScore.find(score => score.number === parseInt(mapIndex))
-          const { points: awayCurrentPoint } = awayScore.find(score => score.number === parseInt(mapIndex))
+          const { points: homeCurrentPoint } = homeScore.find(
+            (score) => score.number === parseInt(mapIndex)
+          );
+          const { points: awayCurrentPoint } = awayScore.find(
+            (score) => score.number === parseInt(mapIndex)
+          );
 
           result = {
             id,
@@ -148,34 +212,33 @@ async function getMatches(browserPage, matchListUpdateCb, matchUpdateCb) {
             home: {
               currentPoint: homeCurrentPoint,
               side: sideHome,
-              score: homeScore
+              score: homeScore,
             },
             away: {
               currentPoint: awayCurrentPoint,
               side: sideAway,
-              score: awayScore
+              score: awayScore,
             },
             mapIndex,
-          }
+          };
 
-          matchUpdateCb(result)
+          matchUpdateCb(result);
         } catch (e) {
-          console.log(e)
+          console.log(e);
         }
-
       }
     } catch (e) {
       // console.log(e)
     }
-  }
+  };
 
-  const f12 = await browserPage.target().createCDPSession()
-  await f12.send('Network.enable')
-  await f12.send('Page.enable')
-  f12.on('Network.webSocketFrameReceived', params => handleWebSocketFrameReceived(params, matchListUpdateCb, matchUpdateCb))
+  const f12 = await browserPage.target().createCDPSession();
+  await f12.send("Network.enable");
+  await f12.send("Page.enable");
+  f12.on("Network.webSocketFrameReceived", (params) =>
+    handleWebSocketFrameReceived(params, matchListUpdateCb, matchUpdateCb)
+  );
 }
-
-
 
 /*
 
@@ -193,21 +256,22 @@ list of naming discipline in ggbet
 */
 
 async function createBrowserAndPage(args) {
-  const browser = await puppeteer.launch({ headless: true, args: args, })
-  const page = await browser.newPage()
-  await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.117 Safari/537.36')
-  await page.setViewport({ width: 1920, height: 1080 })
-  const environment = process.env.NODE_ENV
+  const browser = await puppeteer.launch({ headless: true, args: args });
+  const page = await browser.newPage();
+  await page.setUserAgent(
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.117 Safari/537.36"
+  );
+  await page.setViewport({ width: 1920, height: 1080 });
+  const environment = process.env.NODE_ENV;
   if (environment != "production") {
-    page.on('console', msg => console.log('PAGE LOG:', msg.text()));
+    page.on("console", (msg) => console.log("PAGE LOG:", msg.text()));
   }
-  return { browser, page }
+  return { browser, page };
 }
 
 function generateUrl(baseUrl, discipline) {
-  return `${baseUrl}/en/${discipline}`
+  return `${baseUrl}/en/${discipline}`;
 }
-
 
 /**
  *
@@ -218,46 +282,50 @@ function generateUrl(baseUrl, discipline) {
  * @param {string} [options.mirrorUrl='https://ggbet.com/en']
  * @returns {Promise<object>}
  */
-async function getLiveLine(discipline, matchListUpdateCb, matchUpdateCb, args, {
-  mirrorUrl = 'https://ggbet.com',
-} = {}) {
-
+async function getLiveLine(
+  discipline,
+  matchListUpdateCb,
+  matchUpdateCb,
+  args,
+  { mirrorUrl = "https://ggbet.com" } = {}
+) {
   if (!discipline) {
-    throw new Error('No discipline provided')
+    throw new Error("No discipline provided");
   }
-  const { browser, page } = await createBrowserAndPage(args)
+  const { browser, page } = await createBrowserAndPage(args);
 
   async function re_start_page() {
     console.log("restart get live odds");
 
     await page.setViewport({
       width: 1200,
-      height: 800
+      height: 800,
     });
 
-    const url = generateUrl(mirrorUrl, discipline)
+    const url = generateUrl(mirrorUrl, discipline);
 
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 })
-    
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
+
     // 修改ws请求参数，让其返回完整的market数据
     page.evaluate(() => {
       WebSocket.prototype.oldSend = WebSocket.prototype.send;
 
       WebSocket.prototype.send = function (data) {
-
-        obj = JSON.parse(data)
+        obj = JSON.parse(data);
         if (obj.type == "start") {
           // show all market
-          obj.payload.variables.isTopMarkets = false
+          obj.payload.variables.isTopMarkets = false;
         } else if (obj.type == "stop") {
           // do not unsubsribe live odds change
-          return
+          return;
         }
         WebSocket.prototype.oldSend.apply(this, [JSON.stringify(obj)]);
       };
-    })
+    });
 
-    await page.waitForXPath("//span[contains(., 'Live')]/parent::div", { timeout: 60000 })
+    await page.waitForXPath("//span[contains(., 'Live')]/parent::div", {
+      timeout: 60000,
+    });
     const [button] = await page.$x("//span[contains(., 'Live')]/parent::div");
 
     if (button) {
@@ -283,47 +351,49 @@ async function getLiveLine(discipline, matchListUpdateCb, matchUpdateCb, args, {
       });
     }
 
-    await page.waitForXPath("//div[contains(@class, 'tournamentHeader')]", { timeout: 60000 })
+    await page.waitForXPath("//div[contains(@class, 'tournamentHeader')]", {
+      timeout: 60000,
+    });
 
     await autoScroll(page);
 
     await page.screenshot({
-      path: 'yoursite.png',
-      fullPage: true
+      path: "yoursite.png",
+      fullPage: true,
     });
-
   }
 
   async function start_page() {
     console.log("start get live odds");
     await page.setViewport({
       width: 1200,
-      height: 800
+      height: 800,
     });
 
-    const url = generateUrl(mirrorUrl, discipline)
-    getMatches(page, matchListUpdateCb, matchUpdateCb)
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 })
-    
+    const url = generateUrl(mirrorUrl, discipline);
+    getMatches(page, matchListUpdateCb, matchUpdateCb);
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
+
     // 修改ws请求参数，让其返回完整的market数据
     page.evaluate(() => {
       WebSocket.prototype.oldSend = WebSocket.prototype.send;
 
       WebSocket.prototype.send = function (data) {
-
-        obj = JSON.parse(data)
+        obj = JSON.parse(data);
         if (obj.type == "start") {
           // show all market
-          obj.payload.variables.isTopMarkets = false
+          obj.payload.variables.isTopMarkets = false;
         } else if (obj.type == "stop") {
           // do not unsubsribe live odds change
-          return
+          return;
         }
         WebSocket.prototype.oldSend.apply(this, [JSON.stringify(obj)]);
       };
-    })
+    });
 
-    await page.waitForXPath("//span[contains(., 'Live')]/parent::div", { timeout: 60000 })
+    await page.waitForXPath("//span[contains(., 'Live')]/parent::div", {
+      timeout: 60000,
+    });
     const [button] = await page.$x("//span[contains(., 'Live')]/parent::div");
 
     if (button) {
@@ -349,24 +419,24 @@ async function getLiveLine(discipline, matchListUpdateCb, matchUpdateCb, args, {
       });
     }
 
-    await page.waitForXPath("//div[contains(@class, 'tournamentHeader')]", { timeout: 60000 })
+    await page.waitForXPath("//div[contains(@class, 'tournamentHeader')]", {
+      timeout: 60000,
+    });
 
     await autoScroll(page);
 
     await page.screenshot({
-      path: 'yoursite.png',
-      fullPage: true
+      path: "yoursite.png",
+      fullPage: true,
     });
-
   }
-  start_page()
-  
+  start_page();
 
   setInterval(async () => {
-    re_start_page()
-  }, 1000 * 60 * 5)
+    re_start_page();
+  }, 1000 * 60 * 5);
 
-  await new Promise(async () => { })
+  await new Promise(async () => {});
 }
 
 /**
@@ -378,36 +448,39 @@ async function getLiveLine(discipline, matchListUpdateCb, matchUpdateCb, args, {
  * @param {string} [options.mirrorUrl='https://ggbet.com/en']
  * @returns {Promise<object>}
  */
-async function getAllLine(discipline, args, {
-  mirrorUrl = 'https://ggbet.com',
-} = {}) {
+async function getAllLine(
+  discipline,
+  args,
+  { mirrorUrl = "https://ggbet.com" } = {}
+) {
   if (!discipline) {
-    throw new Error('No discipline provided')
+    throw new Error("No discipline provided");
   }
 
-  const { browser, page } = await createBrowserAndPage(args)
-  const url = generateUrl(mirrorUrl, discipline)
+  const { browser, page } = await createBrowserAndPage(args);
+  const url = generateUrl(mirrorUrl, discipline);
 
-  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 })
+  await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
 
   // 修改ws请求参数，让其返回完整的market数据
   await page.evaluate(() => {
     WebSocket.prototype.oldSend = WebSocket.prototype.send;
 
     WebSocket.prototype.send = function (data) {
-
-      obj = JSON.parse(data)
+      obj = JSON.parse(data);
       if (obj.type == "start") {
-        obj.payload.variables.isTopMarkets = false
+        obj.payload.variables.isTopMarkets = false;
         if (obj?.payload?.variables?.marketLimit) {
-          obj.payload.variables.marketLimit = 0
+          obj.payload.variables.marketLimit = 0;
         }
       }
       WebSocket.prototype.oldSend.apply(this, [JSON.stringify(obj)]);
     };
-  })
+  });
 
-  await page.waitForXPath("//span[contains(., 'Upcoming')]/parent::div", { timeout: 60000 })
+  await page.waitForXPath("//span[contains(., 'Upcoming')]/parent::div", {
+    timeout: 60000,
+  });
   const [button] = await page.$x("//span[contains(., 'Upcoming')]/parent::div");
 
   if (button) {
@@ -422,14 +495,14 @@ async function getAllLine(discipline, args, {
 
   console.log("start get all odds");
 
-  const matches = await getAllMatches(page)
-  await page.close()
-  await browser.close()
+  const matches = await getAllMatches(page);
+  await page.close();
+  await browser.close();
 
-  return matches
+  return matches;
 }
 
 module.exports = {
   getLiveLine,
-  getAllLine
-}
+  getAllLine,
+};
