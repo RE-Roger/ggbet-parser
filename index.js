@@ -122,7 +122,7 @@ async function getAllMatches(browserPage) {
   return result;
 }
 
-async function getMatches(browserPage, matchListUpdateCb, matchUpdateCb) {
+async function getMatches(browserPage, matchListUpdateCb, matchUpdateCb, re_start_page) {
   matchList = [];
   const handleWebSocketFrameReceived = async (
     params,
@@ -130,16 +130,21 @@ async function getMatches(browserPage, matchListUpdateCb, matchUpdateCb) {
     matchUpdateCb
   ) => {
     function get_team_score(id, competitors) {
-      const home_comp = competitors.find(
-        (competitor) => competitor.id === matchList[id].home.id
-      );
-      const away_comp = competitors.find(
-        (competitor) => competitor.id === matchList[id].away.id
-      );
-      return {
-        home: home_comp.score,
-        away: away_comp.score,
-      };
+      if (matchList[id]){
+        const home_comp = competitors.find(
+          (competitor) => competitor.id === matchList[id].home.id
+        );
+        const away_comp = competitors.find(
+          (competitor) => competitor.id === matchList[id].away.id
+        );
+        return {
+          home: home_comp.score,
+          away: away_comp.score,
+        };
+      }else{
+        re_start_page();
+        throw new Error("no match detail info");
+      }
     }
 
     try {
@@ -379,7 +384,7 @@ async function getLiveLine(
     });
 
     const url = generateUrl(mirrorUrl, discipline);
-    getMatches(page, matchListUpdateCb, matchUpdateCb);
+    getMatches(page, matchListUpdateCb, matchUpdateCb, re_start_page);
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
 
     // 修改ws请求参数，让其返回完整的market数据
