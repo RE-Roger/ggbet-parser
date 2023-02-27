@@ -310,11 +310,6 @@ async function getLiveLine(
   async function re_start_page() {
     console.log("restart get live odds");
 
-    await page.setViewport({
-      width: 1200,
-      height: 800,
-    });
-
     const url = generateUrl(mirrorUrl, discipline);
 
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
@@ -334,6 +329,12 @@ async function getLiveLine(
         }
         WebSocket.prototype.oldSend.apply(this, [JSON.stringify(obj)]);
       };
+    });
+
+    await page.setViewport({
+      width: 1098,
+      height: 3196,
+      deviceScaleFactor: 1,
     });
 
     await page.waitForXPath("//span[contains(., 'Live')]/parent::div", {
@@ -378,12 +379,7 @@ async function getLiveLine(
 
   async function start_page() {
     console.log("start get live odds");
-    await page.setViewport({
-      width: 1098,
-      height: 3196,
-      deviceScaleFactor: 1,
-    });
-
+    
     const url = generateUrl(mirrorUrl, discipline);
     getMatches(page, matchListUpdateCb, matchUpdateCb, re_start_page);
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
@@ -403,6 +399,12 @@ async function getLiveLine(
         }
         WebSocket.prototype.oldSend.apply(this, [JSON.stringify(obj)]);
       };
+    });
+
+    await page.setViewport({
+      width: 1098,
+      height: 3196,
+      deviceScaleFactor: 1,
     });
 
     await page.waitForXPath("//span[contains(., 'Live')]/parent::div", {
