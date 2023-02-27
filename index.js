@@ -163,7 +163,7 @@ async function getMatches(browserPage, matchListUpdateCb, matchUpdateCb, re_star
         const asArray = Object.entries(result);
         const filtered = asArray.filter(([id, item]) => { return item.status == "LIVE" })
         const filtered_result = Object.fromEntries(filtered);
-        matchListUpdateCb(filtered_result)
+        matchListUpdateCb(matchList)
       } else if (
         data &&
         data.payload &&
@@ -177,7 +177,7 @@ async function getMatches(browserPage, matchListUpdateCb, matchUpdateCb, re_star
         const asArray = Object.entries(result);
         const filtered = asArray.filter(([id, item]) => { return item.status == "LIVE" })
         const filtered_result = Object.fromEntries(filtered);
-        matchListUpdateCb(filtered_result)
+        matchListUpdateCb(matchList)
       } else if (
         data &&
         data.payload &&
@@ -379,8 +379,9 @@ async function getLiveLine(
   async function start_page() {
     console.log("start get live odds");
     await page.setViewport({
-      width: 1200,
-      height: 800,
+      width: 1098,
+      height: 3196,
+      deviceScaleFactor: 1,
     });
 
     const url = generateUrl(mirrorUrl, discipline);
