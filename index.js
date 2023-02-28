@@ -122,7 +122,12 @@ async function getAllMatches(browserPage) {
   return result;
 }
 
-async function getMatches(browserPage, matchListUpdateCb, matchUpdateCb, re_start_page) {
+async function getMatches(
+  browserPage,
+  matchListUpdateCb,
+  matchUpdateCb,
+  re_start_page
+) {
   matchList = [];
   const handleWebSocketFrameReceived = async (
     params,
@@ -130,7 +135,7 @@ async function getMatches(browserPage, matchListUpdateCb, matchUpdateCb, re_star
     matchUpdateCb
   ) => {
     function get_team_score(id, competitors) {
-      if (matchList[id]){
+      if (matchList[id]) {
         const home_comp = competitors.find(
           (competitor) => competitor.id === matchList[id].home.id
         );
@@ -141,7 +146,7 @@ async function getMatches(browserPage, matchListUpdateCb, matchUpdateCb, re_star
           home: home_comp.score,
           away: away_comp.score,
         };
-      }else{
+      } else {
         re_start_page();
         throw new Error("no match detail info");
       }
@@ -161,9 +166,11 @@ async function getMatches(browserPage, matchListUpdateCb, matchUpdateCb, re_star
         handleMatched(matches, result);
         matchList = result;
         const asArray = Object.entries(result);
-        const filtered = asArray.filter(([id, item]) => { return item.status == "LIVE" })
+        const filtered = asArray.filter(([id, item]) => {
+          return item.status == "LIVE";
+        });
         const filtered_result = Object.fromEntries(filtered);
-        matchListUpdateCb(matchList)
+        matchListUpdateCb(matchList);
       } else if (
         data &&
         data.payload &&
@@ -175,9 +182,11 @@ async function getMatches(browserPage, matchListUpdateCb, matchUpdateCb, re_star
         handleMatched(matches, result);
         matchList = result;
         const asArray = Object.entries(result);
-        const filtered = asArray.filter(([id, item]) => { return item.status == "LIVE" })
+        const filtered = asArray.filter(([id, item]) => {
+          return item.status == "LIVE";
+        });
         const filtered_result = Object.fromEntries(filtered);
-        matchListUpdateCb(matchList)
+        matchListUpdateCb(matchList);
       } else if (
         data &&
         data.payload &&
@@ -332,8 +341,8 @@ async function getLiveLine(
     });
 
     await page.setViewport({
-      width: 1098,
-      height: 3196,
+      width: 1198,
+      height: 3096,
       deviceScaleFactor: 1,
     });
 
@@ -379,7 +388,7 @@ async function getLiveLine(
 
   async function start_page() {
     console.log("start get live odds");
-    
+
     const url = generateUrl(mirrorUrl, discipline);
     getMatches(page, matchListUpdateCb, matchUpdateCb, re_start_page);
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
@@ -402,8 +411,8 @@ async function getLiveLine(
     });
 
     await page.setViewport({
-      width: 1098,
-      height: 3196,
+      width: 1198,
+      height: 3096,
       deviceScaleFactor: 1,
     });
 
@@ -504,8 +513,8 @@ async function getAllLine(
   }
 
   await page.setViewport({
-    width: 1098,
-    height: 3196,
+    width: 1198,
+    height: 3096,
     deviceScaleFactor: 1,
   });
 
