@@ -122,12 +122,7 @@ async function getAllMatches(browserPage) {
   return result;
 }
 
-async function getMatches(
-  browserPage,
-  matchListUpdateCb,
-  matchUpdateCb,
-  re_start_page
-) {
+async function getMatches(browserPage, matchListUpdateCb, matchUpdateCb, re_start_page) {
   matchList = [];
   const handleWebSocketFrameReceived = async (
     params,
@@ -135,7 +130,7 @@ async function getMatches(
     matchUpdateCb
   ) => {
     function get_team_score(id, competitors) {
-      if (matchList[id]) {
+      if (matchList[id]){
         const home_comp = competitors.find(
           (competitor) => competitor.id === matchList[id].home.id
         );
@@ -146,7 +141,7 @@ async function getMatches(
           home: home_comp.score,
           away: away_comp.score,
         };
-      } else {
+      }else{
         re_start_page();
         throw new Error("no match detail info");
       }
@@ -166,11 +161,9 @@ async function getMatches(
         handleMatched(matches, result);
         matchList = result;
         const asArray = Object.entries(result);
-        const filtered = asArray.filter(([id, item]) => {
-          return item.status == "LIVE";
-        });
+        const filtered = asArray.filter(([id, item]) => { return item.status == "LIVE" })
         const filtered_result = Object.fromEntries(filtered);
-        matchListUpdateCb(matchList);
+        matchListUpdateCb(filtered_result)
       } else if (
         data &&
         data.payload &&
@@ -182,11 +175,9 @@ async function getMatches(
         handleMatched(matches, result);
         matchList = result;
         const asArray = Object.entries(result);
-        const filtered = asArray.filter(([id, item]) => {
-          return item.status == "LIVE";
-        });
+        const filtered = asArray.filter(([id, item]) => { return item.status == "LIVE" })
         const filtered_result = Object.fromEntries(filtered);
-        matchListUpdateCb(matchList);
+        matchListUpdateCb(filtered_result)
       } else if (
         data &&
         data.payload &&
@@ -319,6 +310,11 @@ async function getLiveLine(
   async function re_start_page() {
     console.log("restart get live odds");
 
+    await page.setViewport({
+      width: 1200,
+      height: 800,
+    });
+
     const url = generateUrl(mirrorUrl, discipline);
 
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
@@ -332,18 +328,13 @@ async function getLiveLine(
         if (obj.type == "start") {
           // show all market
           obj.payload.variables.isTopMarkets = false;
+          console.log(data);
         } else if (obj.type == "stop") {
           // do not unsubsribe live odds change
           return;
         }
         WebSocket.prototype.oldSend.apply(this, [JSON.stringify(obj)]);
       };
-    });
-
-    await page.setViewport({
-      width: 1198,
-      height: 3096,
-      deviceScaleFactor: 1,
     });
 
     await page.waitForXPath("//span[contains(., 'Live')]/parent::div", {
@@ -390,7 +381,7 @@ async function getLiveLine(
     console.log("start get live odds");
 
     const url = generateUrl(mirrorUrl, discipline);
-    getMatches(page, matchListUpdateCb, matchUpdateCb, re_start_page);
+    await getMatches(page, matchListUpdateCb, matchUpdateCb, re_start_page);
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
 
     // 修改ws请求参数，让其返回完整的market数据
@@ -402,18 +393,13 @@ async function getLiveLine(
         if (obj.type == "start") {
           // show all market
           obj.payload.variables.isTopMarkets = false;
+          console.log(data)
         } else if (obj.type == "stop") {
           // do not unsubsribe live odds change
           return;
         }
         WebSocket.prototype.oldSend.apply(this, [JSON.stringify(obj)]);
       };
-    });
-
-    await page.setViewport({
-      width: 1198,
-      height: 3096,
-      deviceScaleFactor: 1,
     });
 
     await page.waitForXPath("//span[contains(., 'Live')]/parent::div", {
@@ -485,6 +471,8 @@ async function getAllLine(
   const { browser, page } = await createBrowserAndPage(args);
   const url = generateUrl(mirrorUrl, discipline);
 
+  const matches = await getAllMatches(page);
+
   await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
 
   // 修改ws请求参数，让其返回完整的market数据
@@ -513,14 +501,14 @@ async function getAllLine(
   }
 
   await page.setViewport({
-    width: 1198,
-    height: 3096,
+    width: 1098,
+    height: 3196,
     deviceScaleFactor: 1,
   });
 
   console.log("start get all odds");
 
-  const matches = await getAllMatches(page);
+  
   await page.close();
   await browser.close();
 
