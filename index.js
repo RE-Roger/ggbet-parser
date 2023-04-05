@@ -307,37 +307,16 @@ async function getLiveLine(
   }
   const { browser, page } = await createBrowserAndPage(args);
 
-  async function re_start_page() {
-    console.log("restart get live odds");
+  console.log("start get live odds");
+  async function re_start_page(){
+    const [Allbutton] = await page.$x("//span[contains(., 'All')]/parent::div");
+    if (Allbutton) {
+      await Allbutton.click();
+    }else{
+      throw new Error("no All button"); 
+    }
 
-    await page.setViewport({
-      width: 1200,
-      height: 800,
-    });
-
-    const url = generateUrl(mirrorUrl, discipline);
-
-    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
-
-    // 修改ws请求参数，让其返回完整的market数据
-    page.evaluate(() => {
-      WebSocket.prototype.oldSend = WebSocket.prototype.send;
-
-      WebSocket.prototype.send = function (data) {
-        obj = JSON.parse(data);
-        if (obj.type == "start") {
-          // show all market
-          obj.payload.variables.isTopMarkets = false;
-          console.log(data);
-        } else if (obj.type == "stop") {
-          // do not unsubsribe live odds change
-          return;
-        }
-        WebSocket.prototype.oldSend.apply(this, [JSON.stringify(obj)]);
-      };
-    });
-
-    await page.waitForXPath("//span[contains(., 'Live')]/parent::div", {
+    await page.waitForXPath("//div[contains(@class, 'tournamentHeader')]", {
       timeout: 60000,
     });
     const [button] = await page.$x("//span[contains(., 'Live')]/parent::div");
@@ -345,108 +324,73 @@ async function getLiveLine(
     if (button) {
       await button.click();
     }
+  }
 
-    async function autoScroll(page) {
-      await page.evaluate(async () => {
-        await new Promise((resolve) => {
-          var totalHeight = 0;
-          var distance = 100;
-          var timer = setInterval(() => {
-            var scrollHeight = document.body.scrollHeight;
-            window.scrollBy(0, distance);
-            totalHeight += distance;
+  const url = generateUrl(mirrorUrl, discipline);
+  await getMatches(page, matchListUpdateCb, matchUpdateCb, re_start_page);
+  await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
 
-            if (totalHeight >= scrollHeight - window.innerHeight) {
-              clearInterval(timer);
-              resolve();
-            }
-          }, 2000);
-        });
+  // 修改ws请求参数，让其返回完整的market数据
+  page.evaluate(() => {
+    WebSocket.prototype.oldSend = WebSocket.prototype.send;
+
+    WebSocket.prototype.send = function (data) {
+      obj = JSON.parse(data);
+      if (obj.type == "start") {
+        // show all market
+        obj.payload.variables.isTopMarkets = false;
+        console.log(data)
+      } else if (obj.type == "stop") {
+        // do not unsubsribe live odds change
+        return;
+      } 
+      WebSocket.prototype.oldSend.apply(this, [JSON.stringify(obj)]);
+    };
+  });
+
+  await page.waitForXPath("//span[contains(., 'Live')]/parent::div", {
+    timeout: 60000,
+  });
+  const [button] = await page.$x("//span[contains(., 'Live')]/parent::div");
+
+  if (button) {
+    await button.click();
+  }
+
+  async function autoScroll(page) {
+    await page.evaluate(async () => {
+      await new Promise((resolve) => {
+        var totalHeight = 0;
+        var distance = 100;
+        var timer = setInterval(() => {
+          var scrollHeight = document.body.scrollHeight;
+          window.scrollBy(0, distance);
+          totalHeight += distance;
+
+          if (totalHeight >= scrollHeight - window.innerHeight) {
+            clearInterval(timer);
+            resolve();
+          }
+        }, 2000);
       });
-    }
-
-    await page.waitForXPath("//div[contains(@class, 'tournamentHeader')]", {
-      timeout: 60000,
-    });
-
-    await autoScroll(page);
-
-    await page.screenshot({
-      path: "yoursite.png",
-      fullPage: true,
     });
   }
 
-  async function start_page() {
-    console.log("start get live odds");
+  await page.waitForXPath("//div[contains(@class, 'tournamentHeader')]", {
+    timeout: 60000,
+  });
 
-    const url = generateUrl(mirrorUrl, discipline);
-    await getMatches(page, matchListUpdateCb, matchUpdateCb, re_start_page);
-    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
+  await autoScroll(page);
 
-    // 修改ws请求参数，让其返回完整的market数据
-    page.evaluate(() => {
-      WebSocket.prototype.oldSend = WebSocket.prototype.send;
-
-      WebSocket.prototype.send = function (data) {
-        obj = JSON.parse(data);
-        if (obj.type == "start") {
-          // show all market
-          obj.payload.variables.isTopMarkets = false;
-          console.log(data)
-        } else if (obj.type == "stop") {
-          // do not unsubsribe live odds change
-          return;
-        }
-        WebSocket.prototype.oldSend.apply(this, [JSON.stringify(obj)]);
-      };
-    });
-
-    await page.waitForXPath("//span[contains(., 'Live')]/parent::div", {
-      timeout: 60000,
-    });
-    const [button] = await page.$x("//span[contains(., 'Live')]/parent::div");
-
-    if (button) {
-      await button.click();
-    }
-
-    async function autoScroll(page) {
-      await page.evaluate(async () => {
-        await new Promise((resolve) => {
-          var totalHeight = 0;
-          var distance = 100;
-          var timer = setInterval(() => {
-            var scrollHeight = document.body.scrollHeight;
-            window.scrollBy(0, distance);
-            totalHeight += distance;
-
-            if (totalHeight >= scrollHeight - window.innerHeight) {
-              clearInterval(timer);
-              resolve();
-            }
-          }, 2000);
-        });
-      });
-    }
-
-    await page.waitForXPath("//div[contains(@class, 'tournamentHeader')]", {
-      timeout: 60000,
-    });
-
-    await autoScroll(page);
-
-    await page.screenshot({
-      path: "yoursite.png",
-      fullPage: true,
-    });
-  }
-  start_page();
+  await page.screenshot({
+    path: "yoursite.png",
+    fullPage: true,
+  });
 
   setInterval(async () => {
     re_start_page();
   }, 1000 * 60 * 5);
-
+  
   await new Promise(async () => {});
 }
 
