@@ -1,5 +1,12 @@
 const puppeteer = require("puppeteer");
 
+class NoMatchInfoException extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "NoMatchInfoException";
+  }
+}
+
 const handleMatched = function (matches, result) {
   for (const match of matches.filter(Boolean)) {
     try {
@@ -143,7 +150,7 @@ async function getMatches(browserPage, matchListUpdateCb, matchUpdateCb, re_star
         };
       }else{
         re_start_page();
-        throw new Error("no match detail info");
+        throw new NoMatchInfoException("no match detail info");
       }
     }
 
@@ -237,7 +244,11 @@ async function getMatches(browserPage, matchListUpdateCb, matchUpdateCb, re_star
 
           matchUpdateCb(result);
         } catch (e) {
-          console.log(e);
+          if (error instanceof NoMatchInfoException) {
+            throw new NoMatchInfoException("no match info restart")
+          } else {
+            console.log(e);
+          }
         }
       }
     } catch (e) {
