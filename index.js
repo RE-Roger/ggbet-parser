@@ -359,39 +359,47 @@ async function getLiveLine(
     };
   });
 
-  await page.waitForXPath("//span[contains(., 'Live')]/parent::div", {
-    timeout: 60000,
-  });
-  const [button] = await page.$x("//span[contains(., 'Live')]/parent::div");
+  try{
+    await page.waitForXPath("//span[contains(., 'Live')]/parent::div", {
+      timeout: 60000,
+    });
+  
+    const [button] = await page.$x("//span[contains(., 'Live')]/parent::div");
 
-  if (button) {
-    await button.click();
-  }
+    if (button) {
+      await button.click();
+    }
 
-  async function autoScroll(page) {
-    await page.evaluate(async () => {
-      await new Promise((resolve) => {
-        var totalHeight = 0;
-        var distance = 100;
-        var timer = setInterval(() => {
-          var scrollHeight = document.body.scrollHeight;
-          window.scrollBy(0, distance);
-          totalHeight += distance;
+    async function autoScroll(page) {
+      await page.evaluate(async () => {
+        await new Promise((resolve) => {
+          var totalHeight = 0;
+          var distance = 100;
+          var timer = setInterval(() => {
+            var scrollHeight = document.body.scrollHeight;
+            window.scrollBy(0, distance);
+            totalHeight += distance;
 
-          if (totalHeight >= scrollHeight - window.innerHeight) {
-            clearInterval(timer);
-            resolve();
-          }
-        }, 2000);
+            if (totalHeight >= scrollHeight - window.innerHeight) {
+              clearInterval(timer);
+              resolve();
+            }
+          }, 2000);
+        });
       });
+    }
+
+    await page.waitForXPath("//div[contains(@class, 'tournamentHeader')]", {
+      timeout: 60000,
+    });
+
+    await autoScroll(page);
+  }catch(e){
+    await page.screenshot({
+      path: "error.png",
+      fullPage: true,
     });
   }
-
-  await page.waitForXPath("//div[contains(@class, 'tournamentHeader')]", {
-    timeout: 60000,
-  });
-
-  await autoScroll(page);
 
   await page.screenshot({
     path: "yoursite.png",
