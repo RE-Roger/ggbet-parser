@@ -137,7 +137,7 @@ async function getMatches(browserPage, matchListUpdateCb, matchUpdateCb, re_star
     matchUpdateCb
   ) => {
     function get_team_score(id, competitors) {
-      if (matchList[id]){
+      if (matchList[id]) {
         const home_comp = competitors.find(
           (competitor) => competitor.id === matchList[id].home.id
         );
@@ -148,7 +148,7 @@ async function getMatches(browserPage, matchListUpdateCb, matchUpdateCb, re_star
           home: home_comp.score,
           away: away_comp.score,
         };
-      }else{
+      } else {
         re_start_page();
         throw new NoMatchInfoException("no match detail info");
       }
@@ -319,21 +319,28 @@ async function getLiveLine(
   const { browser, page } = await createBrowserAndPage(args);
 
   console.log("start get live odds");
-  async function re_start_page(){
-    const [Allbutton] = await page.$x("//span[contains(., 'All')]/parent::div");
-    if (Allbutton) {
-      await Allbutton.click();
-    }else{
-      throw new Error("no All button"); 
-    }
+  async function re_start_page() {
+    try {
+      const [Allbutton] = await page.$x("//span[contains(., 'All')]/parent::div");
+      if (Allbutton) {
+        await Allbutton.click();
+      } else {
+        throw new Error("no All button");
+      }
 
-    await page.waitForXPath("//div[contains(@class, 'tournamentHeader')]", {
-      timeout: 60000,
-    });
-    const [button] = await page.$x("//span[contains(., 'Live')]/parent::div");
+      await page.waitForXPath("//div[contains(@class, 'tournamentHeader')]", {
+        timeout: 60000,
+      });
+      const [button] = await page.$x("//span[contains(., 'Live')]/parent::div");
 
-    if (button) {
-      await button.click();
+      if (button) {
+        await button.click();
+      }
+    } catch (e) {
+      await page.screenshot({
+        path: "error.png",
+        fullPage: true,
+      });
     }
   }
 
@@ -354,16 +361,16 @@ async function getLiveLine(
       } else if (obj.type == "stop") {
         // do not unsubsribe live odds change
         return;
-      } 
+      }
       WebSocket.prototype.oldSend.apply(this, [JSON.stringify(obj)]);
     };
   });
 
-  try{
+  try {
     await page.waitForXPath("//span[contains(., 'Live')]/parent::div", {
       timeout: 60000,
     });
-  
+
     const [button] = await page.$x("//span[contains(., 'Live')]/parent::div");
 
     if (button) {
@@ -394,7 +401,7 @@ async function getLiveLine(
     });
 
     await autoScroll(page);
-  }catch(e){
+  } catch (e) {
     await page.screenshot({
       path: "error.png",
       fullPage: true,
@@ -409,8 +416,8 @@ async function getLiveLine(
   setInterval(async () => {
     re_start_page();
   }, 1000 * 60 * 5);
-  
-  await new Promise(async () => {});
+
+  await new Promise(async () => { });
 }
 
 /**
@@ -471,7 +478,7 @@ async function getAllLine(
 
   console.log("start get all odds");
 
-  
+
   await page.close();
   await browser.close();
 
