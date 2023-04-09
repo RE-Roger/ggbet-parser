@@ -406,6 +406,7 @@ async function getLiveLine(
       path: "error.png",
       fullPage: true,
     });
+    process.exit(1);
   }
 
   await page.screenshot({
