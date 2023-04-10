@@ -460,12 +460,12 @@ async function getLiveLine(
 }
 
 
-async function getLine(
+function getLine(
   discipline,
   args,
   { mirrorUrl = "https://ggbet.com" } = {}
 ) {
-  await new Promise(async (resolve) => {
+  return new Promise(async (resolve) => {
     if (!discipline) {
       throw new Error("No discipline provided");
     }
