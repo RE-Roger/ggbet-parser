@@ -80,7 +80,7 @@ const handleMatched = function (matches, result) {
 };
 
 
-async function getAllMatches(browserPage) {
+async function getAllMatches(browserPage, resolve) {
   const handleWebSocketFrameReceived = async (params, resolve) => {
     const result = {};
     try {
@@ -112,12 +112,9 @@ async function getAllMatches(browserPage) {
   await f12.send("Network.enable");
   await f12.send("Page.enable");
 
-  const result = await new Promise((resolve) => {
-    f12.on("Network.webSocketFrameReceived", (params) =>
-      handleWebSocketFrameReceived(params, resolve)
-    );
-  });
-  return result;
+  f12.on("Network.webSocketFrameReceived", (params) =>
+    handleWebSocketFrameReceived(params, resolve)
+  );
 }
 
 async function getAllNotLiveMatches(browserPage) {
@@ -468,46 +465,57 @@ async function getLine(
   args,
   { mirrorUrl = "https://ggbet.com" } = {}
 ) {
-  if (!discipline) {
-    throw new Error("No discipline provided");
-  }
+  await new Promise(async (resolve) => {
+    if (!discipline) {
+      throw new Error("No discipline provided");
+    }
 
-  const { browser, page } = await createBrowserAndPage(args);
-  const url = generateUrl(mirrorUrl, discipline);
+    const { browser, page } = await createBrowserAndPage(args);
+    const url = generateUrl(mirrorUrl, discipline);
 
-  const matches = await getAllMatches(page);
+    getAllMatches(page, async (matches) => {
+      console.log("start get all odds");
+      await page.close();
+      await browser.close();
+      resolve(matches);
+    });
 
-  await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
 
-  // 修改ws请求参数，让其返回完整的market数据
-  await page.evaluate(() => {
-    WebSocket.prototype.oldSend = WebSocket.prototype.send;
+    // 修改ws请求参数，让其返回完整的market数据
+    await page.evaluate(() => {
+      WebSocket.prototype.oldSend = WebSocket.prototype.send;
 
-    WebSocket.prototype.send = function (data) {
-      obj = JSON.parse(data);
-      if (obj.type == "start") {
-        obj.payload.variables.isTopMarkets = false;
-        if (obj?.payload?.variables?.marketLimit) {
-          obj.payload.variables.marketLimit = 0;
+      WebSocket.prototype.send = function (data) {
+        obj = JSON.parse(data);
+        if (obj.type == "start") {
+          obj.payload.variables.isTopMarkets = false;
+          if (obj?.payload?.variables?.marketLimit) {
+            obj.payload.variables.marketLimit = 0;
+          }
         }
-      }
-      WebSocket.prototype.oldSend.apply(this, [JSON.stringify(obj)]);
-    };
-  });
+        WebSocket.prototype.oldSend.apply(this, [JSON.stringify(obj)]);
+      };
+    });
 
-  await page.setViewport({
-    width: 1098,
-    height: 3196,
-    deviceScaleFactor: 1,
-  });
+    await page.setViewport({
+      width: 1098,
+      height: 3196,
+      deviceScaleFactor: 1,
+    });
 
-  console.log("start get all odds");
+    try {
+      await page.waitForXPath("//div[contains(@class, 'tournamentHeader')]", {
+        timeout: 60000,
+      });
 
-
-  await page.close();
-  await browser.close();
-
-  return matches;
+    } catch (e) {
+      await page.screenshot({
+        path: "error.png",
+        fullPage: true,
+      });
+    }
+  })
 }
 /**
  *
