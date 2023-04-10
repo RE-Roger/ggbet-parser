@@ -79,7 +79,48 @@ const handleMatched = function (matches, result) {
   }
 };
 
+
 async function getAllMatches(browserPage) {
+  const handleWebSocketFrameReceived = async (params, resolve) => {
+    const result = {};
+    try {
+      const data = JSON.parse(params.response.payloadData);
+      if (
+        data &&
+        data.payload &&
+        data.payload.data &&
+        data.payload.data.matches
+      ) {
+        const { matches } = data.payload.data;
+        handleMatched(matches, result);
+        if (Object.keys(result).length) resolve(result);
+      } else if (
+        data &&
+        data.payload &&
+        data.payload.data &&
+        data.payload.data.sportEventListByFilters
+      ) {
+        const matches = data.payload.data.sportEventListByFilters.sportEvents;
+        handleMatched(matches, result);
+        if (Object.keys(result).length) resolve(result);
+      }
+    } catch (e) {
+      // console.log(e)
+    }
+  };
+  const f12 = await browserPage.target().createCDPSession();
+  await f12.send("Network.enable");
+  await f12.send("Page.enable");
+
+  const result = await new Promise((resolve) => {
+    f12.on("Network.webSocketFrameReceived", (params) =>
+      handleWebSocketFrameReceived(params, resolve)
+    );
+  });
+  return result;
+}
+
+async function getAllNotLiveMatches(browserPage) {
   const handleWebSocketFrameReceived = async (params, resolve) => {
     const result = {};
     try {
@@ -421,6 +462,53 @@ async function getLiveLine(
   await new Promise(async () => { });
 }
 
+
+async function getLine(
+  discipline,
+  args,
+  { mirrorUrl = "https://ggbet.com" } = {}
+) {
+  if (!discipline) {
+    throw new Error("No discipline provided");
+  }
+
+  const { browser, page } = await createBrowserAndPage(args);
+  const url = generateUrl(mirrorUrl, discipline);
+
+  const matches = await getAllMatches(page);
+
+  await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
+
+  // 修改ws请求参数，让其返回完整的market数据
+  await page.evaluate(() => {
+    WebSocket.prototype.oldSend = WebSocket.prototype.send;
+
+    WebSocket.prototype.send = function (data) {
+      obj = JSON.parse(data);
+      if (obj.type == "start") {
+        obj.payload.variables.isTopMarkets = false;
+        if (obj?.payload?.variables?.marketLimit) {
+          obj.payload.variables.marketLimit = 0;
+        }
+      }
+      WebSocket.prototype.oldSend.apply(this, [JSON.stringify(obj)]);
+    };
+  });
+
+  await page.setViewport({
+    width: 1098,
+    height: 3196,
+    deviceScaleFactor: 1,
+  });
+
+  console.log("start get all odds");
+
+
+  await page.close();
+  await browser.close();
+
+  return matches;
+}
 /**
  *
  * @param {string} discipline
@@ -442,7 +530,7 @@ async function getAllLine(
   const { browser, page } = await createBrowserAndPage(args);
   const url = generateUrl(mirrorUrl, discipline);
 
-  const matches = await getAllMatches(page);
+  const matches = await getAllNotLiveMatches(page);
 
   await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
 
@@ -487,6 +575,7 @@ async function getAllLine(
 }
 
 module.exports = {
+  getLine,
   getLiveLine,
   getAllLine,
 };
