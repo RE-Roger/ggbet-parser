@@ -80,7 +80,7 @@ const handleMatched = function (matches, result) {
 };
 
 
-async function getAllMatches(browserPage, resolve) {
+async function getAllMatches(browserPage, url, resolve) {
   const handleWebSocketFrameReceived = async (params, resolve, client) => {
     const result = {};
     try {
@@ -493,7 +493,7 @@ function getLine(
     const { browser, page } = await createBrowserAndPage(args);
     const url = generateUrl(mirrorUrl, discipline);
 
-    getAllMatches(page, async (matches) => {
+    getAllMatches(page, url, async (matches) => {
       console.log("start get all odds");
       resolve(matches);
       await browser.close();
