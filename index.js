@@ -475,10 +475,13 @@ function getLine(
 
     getAllMatches(page, async (matches) => {
       console.log("start get all odds");
-      console.log(matches);
       resolve(matches);
-      await page.close();
-      await browser.close();
+      try {
+        await page.close();
+        await browser.close();
+      } catch (e) {
+        console.log(e)
+      }
     });
 
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
