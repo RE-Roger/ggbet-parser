@@ -93,8 +93,7 @@ async function getAllMatches(browserPage, resolve) {
       ) {
         const { matches } = data.payload.data;
         handleMatched(matches, result);
-        console.log(result)
-        if (Object.keys(result).length) resolve(result);
+        resolve(result);
       } else if (
         data &&
         data.payload &&
@@ -103,8 +102,7 @@ async function getAllMatches(browserPage, resolve) {
       ) {
         const matches = data.payload.data.sportEventListByFilters.sportEvents;
         handleMatched(matches, result);
-        console.log(result)
-        if (Object.keys(result).length) resolve(result);
+        resolve(result);
       }
     } catch (e) {
       console.log(e)
@@ -477,6 +475,7 @@ function getLine(
 
     getAllMatches(page, async (matches) => {
       console.log("start get all odds");
+      console.log(matches);
       resolve(matches);
       await page.close();
       await browser.close();
