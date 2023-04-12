@@ -81,7 +81,7 @@ const handleMatched = function (matches, result) {
 
 
 async function getAllMatches(browserPage, resolve) {
-  const handleWebSocketFrameReceived = async (params, resolve, session) => {
+  const handleWebSocketFrameReceived = async (params, resolve, client) => {
     const result = {};
     try {
       const data = JSON.parse(params.response.payloadData);
@@ -93,7 +93,7 @@ async function getAllMatches(browserPage, resolve) {
       ) {
         const { matches } = data.payload.data;
         handleMatched(matches, result);
-        await session.close()
+        await client.detach()
         resolve(result);
       } else if (
         data &&
@@ -103,7 +103,7 @@ async function getAllMatches(browserPage, resolve) {
       ) {
         const matches = data.payload.data.sportEventListByFilters.sportEvents;
         handleMatched(matches, result);
-        await session.close()
+        await client.detach()
         resolve(result);
       }
     } catch (e) {
