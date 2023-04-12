@@ -93,6 +93,7 @@ async function getAllMatches(browserPage, resolve) {
       ) {
         const { matches } = data.payload.data;
         handleMatched(matches, result);
+        console.log(result)
         if (Object.keys(result).length) resolve(result);
       } else if (
         data &&
@@ -102,10 +103,11 @@ async function getAllMatches(browserPage, resolve) {
       ) {
         const matches = data.payload.data.sportEventListByFilters.sportEvents;
         handleMatched(matches, result);
+        console.log(result)
         if (Object.keys(result).length) resolve(result);
       }
     } catch (e) {
-      // console.log(e)
+      console.log(e)
     }
   };
   const f12 = await browserPage.target().createCDPSession();
