@@ -114,6 +114,24 @@ async function getAllMatches(browserPage, resolve) {
   await f12.send("Network.enable");
   await f12.send("Page.enable");
 
+  await browserPage.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
+
+  // 修改ws请求参数，让其返回完整的market数据
+  await browserPage.evaluate(() => {
+    WebSocket.prototype.oldSend = WebSocket.prototype.send;
+
+    WebSocket.prototype.send = function (data) {
+      obj = JSON.parse(data);
+      if (obj.type == "start") {
+        obj.payload.variables.isTopMarkets = false;
+        if (obj?.payload?.variables?.marketLimit) {
+          obj.payload.variables.marketLimit = 0;
+        }
+      }
+      WebSocket.prototype.oldSend.apply(this, [JSON.stringify(obj)]);
+    };
+  });
+
   f12.on("Network.webSocketFrameReceived", (params) =>
     handleWebSocketFrameReceived(params, resolve, f12)
   );
@@ -480,42 +498,6 @@ function getLine(
       resolve(matches);
       await browser.close();
     });
-
-    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
-
-    // 修改ws请求参数，让其返回完整的market数据
-    await page.evaluate(() => {
-      WebSocket.prototype.oldSend = WebSocket.prototype.send;
-
-      WebSocket.prototype.send = function (data) {
-        obj = JSON.parse(data);
-        if (obj.type == "start") {
-          obj.payload.variables.isTopMarkets = false;
-          if (obj?.payload?.variables?.marketLimit) {
-            obj.payload.variables.marketLimit = 0;
-          }
-        }
-        WebSocket.prototype.oldSend.apply(this, [JSON.stringify(obj)]);
-      };
-    });
-
-    await page.setViewport({
-      width: 1098,
-      height: 3196,
-      deviceScaleFactor: 1,
-    });
-
-    try {
-      await page.waitForXPath("//div[contains(@class, 'tournamentHeader')]", {
-        timeout: 60000,
-      });
-
-    } catch (e) {
-      await page.screenshot({
-        path: "error.png",
-        fullPage: true,
-      });
-    }
   })
 }
 /**
