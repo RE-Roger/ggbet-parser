@@ -478,7 +478,6 @@ function getLine(
     getAllMatches(page, async (matches) => {
       console.log("start get all odds");
       resolve(matches);
-      await page.close();
       await browser.close();
     });
 
