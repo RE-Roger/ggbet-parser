@@ -93,8 +93,8 @@ async function getAllMatches(browserPage, resolve) {
       ) {
         const { matches } = data.payload.data;
         handleMatched(matches, result);
+        await session.close()
         resolve(result);
-        session.close()
       } else if (
         data &&
         data.payload &&
@@ -103,8 +103,8 @@ async function getAllMatches(browserPage, resolve) {
       ) {
         const matches = data.payload.data.sportEventListByFilters.sportEvents;
         handleMatched(matches, result);
+        await session.close()
         resolve(result);
-        session.close()
       }
     } catch (e) {
       console.log(e)
