@@ -137,8 +137,8 @@ async function getAllMatches(browserPage, url, resolve) {
   );
 }
 
-async function getAllNotLiveMatches(browserPage) {
-  const handleWebSocketFrameReceived = async (params, resolve) => {
+async function getAllNotLiveMatches(browserPage, rslv,) {
+  const handleWebSocketFrameReceived = async (params, resolve, client) => {
     const result = {};
     try {
       const data = JSON.parse(params.response.payloadData);
@@ -155,6 +155,7 @@ async function getAllNotLiveMatches(browserPage) {
           return item.status == "NOT_STARTED";
         });
         const filtered_result = Object.fromEntries(filtered);
+        await client.detach()
         if (Object.keys(result).length) resolve(filtered_result);
       } else if (
         data &&
@@ -169,6 +170,7 @@ async function getAllNotLiveMatches(browserPage) {
           return item.status == "NOT_STARTED";
         });
         const filtered_result = Object.fromEntries(filtered);
+        await client.detach()
         if (Object.keys(result).length) resolve(filtered_result);
       }
     } catch (e) {
@@ -179,12 +181,9 @@ async function getAllNotLiveMatches(browserPage) {
   await f12.send("Network.enable");
   await f12.send("Page.enable");
 
-  const result = await new Promise((resolve) => {
-    f12.on("Network.webSocketFrameReceived", (params) =>
-      handleWebSocketFrameReceived(params, resolve)
-    );
-  });
-  return result;
+  f12.on("Network.webSocketFrameReceived", (params) =>
+    handleWebSocketFrameReceived(params, rslv, f12)
+  );
 }
 
 async function getMatches(browserPage, matchListUpdateCb, matchUpdateCb, re_start_page) {
@@ -509,60 +508,59 @@ function getLine(
  * @param {string} [options.mirrorUrl='https://ggbet.com/en']
  * @returns {Promise<object>}
  */
-async function getAllLine(
+function getAllLine(
   discipline,
   args,
   { mirrorUrl = "https://ggbet.com" } = {}
 ) {
-  if (!discipline) {
-    throw new Error("No discipline provided");
-  }
+  return new Promise(async (resolve) => {
+    if (!discipline) {
+      throw new Error("No discipline provided");
+    }
 
-  const { browser, page } = await createBrowserAndPage(args);
-  const url = generateUrl(mirrorUrl, discipline);
+    const { browser, page } = await createBrowserAndPage(args);
+    const url = generateUrl(mirrorUrl, discipline);
 
-  const matches = await getAllNotLiveMatches(page);
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
 
-  await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
+    // 修改ws请求参数，让其返回完整的market数据
+    await page.evaluate(() => {
+      WebSocket.prototype.oldSend = WebSocket.prototype.send;
 
-  // 修改ws请求参数，让其返回完整的market数据
-  await page.evaluate(() => {
-    WebSocket.prototype.oldSend = WebSocket.prototype.send;
-
-    WebSocket.prototype.send = function (data) {
-      obj = JSON.parse(data);
-      if (obj.type == "start") {
-        obj.payload.variables.isTopMarkets = false;
-        if (obj?.payload?.variables?.marketLimit) {
-          obj.payload.variables.marketLimit = 0;
+      WebSocket.prototype.send = function (data) {
+        obj = JSON.parse(data);
+        if (obj.type == "start") {
+          obj.payload.variables.isTopMarkets = false;
+          if (obj?.payload?.variables?.marketLimit) {
+            obj.payload.variables.marketLimit = 0;
+          }
         }
-      }
-      WebSocket.prototype.oldSend.apply(this, [JSON.stringify(obj)]);
-    };
-  });
+        WebSocket.prototype.oldSend.apply(this, [JSON.stringify(obj)]);
+      };
+    });
 
-  await page.waitForXPath("//span[contains(., 'Upcoming')]/parent::div", {
-    timeout: 60000,
-  });
-  const [button] = await page.$x("//span[contains(., 'Upcoming')]/parent::div");
+    await page.waitForXPath("//span[contains(., 'Upcoming')]/parent::div", {
+      timeout: 60000,
+    });
+    const [button] = await page.$x("//span[contains(., 'Upcoming')]/parent::div");
 
-  if (button) {
-    await button.click();
-  }
+    if (button) {
+      button.click();
 
-  await page.setViewport({
-    width: 1098,
-    height: 3196,
-    deviceScaleFactor: 1,
-  });
+      getAllNotLiveMatches(page, async (matches) => {
+        console.log("start get upcoming odds");
+        resolve(matches);
+        await page.close();
+        await browser.close();
+      });
 
-  console.log("start get all odds");
-
-
-  await page.close();
-  await browser.close();
-
-  return matches;
+      await page.setViewport({
+        width: 1098,
+        height: 3196,
+        deviceScaleFactor: 1,
+      });
+    }
+  })
 }
 
 module.exports = {
