@@ -556,8 +556,13 @@ function getAllLine(
         button.click();
       }
     } catch (e) {
-      const content = await page.content()
-      console.log(content);
+      const frames = page.frames();
+      // 找到你想要的iframe，例如根据它的选择器
+      const iframe = frames[0];
+
+      // 获取iframe中的内容
+      const iframeContent = await iframe.content();
+      console.log(iframeContent);
       await page.screenshot({
         path: "error.png",
         fullPage: true,
