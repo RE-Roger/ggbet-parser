@@ -539,25 +539,26 @@ function getAllLine(
       };
     });
 
-    await page.waitForXPath("//span[contains(., 'Upcoming')]/parent::div", {
-      timeout: 60000,
-    });
-    const [button] = await page.$x("//span[contains(., 'Upcoming')]/parent::div");
-
-    if (button) {
-      button.click();
-
-      getAllNotLiveMatches(page, async (matches) => {
-        console.log("start get upcoming odds");
-        resolve(matches);
-        await page.close();
-        await browser.close();
+    try {
+      await page.waitForXPath("//span[contains(., 'Upcoming')]/parent::div", {
+        timeout: 60000,
       });
+      const [button] = await page.$x("//span[contains(., 'Upcoming')]/parent::div");
 
-      await page.setViewport({
-        width: 1098,
-        height: 3196,
-        deviceScaleFactor: 1,
+      if (button) {
+        button.click();
+
+        getAllNotLiveMatches(page, async (matches) => {
+          console.log("start get upcoming odds");
+          resolve(matches);
+          await page.close();
+          await browser.close();
+        });
+      }
+    } catch (e) {
+      await page.screenshot({
+        path: "error.png",
+        fullPage: true,
       });
     }
   })
