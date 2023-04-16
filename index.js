@@ -540,6 +540,13 @@ function getAllLine(
     });
 
     try {
+      getAllNotLiveMatches(page, async (matches) => {
+        console.log("start get upcoming odds");
+        resolve(matches);
+        await page.close();
+        await browser.close();
+      });
+
       await page.waitForXPath("//span[contains(., 'Upcoming')]/parent::div", {
         timeout: 60000,
       });
@@ -547,13 +554,6 @@ function getAllLine(
 
       if (button) {
         button.click();
-
-        getAllNotLiveMatches(page, async (matches) => {
-          console.log("start get upcoming odds");
-          resolve(matches);
-          await page.close();
-          await browser.close();
-        });
       }
     } catch (e) {
       await page.screenshot({
