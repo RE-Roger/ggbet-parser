@@ -556,6 +556,8 @@ function getAllLine(
         button.click();
       }
     } catch (e) {
+      const content = await page.content()
+      console.log(content);
       await page.screenshot({
         path: "error.png",
         fullPage: true,
