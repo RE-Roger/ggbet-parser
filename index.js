@@ -1,4 +1,10 @@
-const puppeteer = require("puppeteer");
+const puppeteer = require('puppeteer-extra')
+
+// add stealth plugin and use defaults (all evasion techniques) 
+const StealthPlugin = require('puppeteer-extra-plugin-stealth')
+puppeteer.use(StealthPlugin())
+
+const { executablePath } = require('puppeteer')
 
 class NoMatchInfoException extends Error {
   constructor(message) {
@@ -337,7 +343,7 @@ list of naming discipline in ggbet
 */
 
 async function createBrowserAndPage(args) {
-  const browser = await puppeteer.launch({ headless: true, args: args });
+  const browser = await puppeteer.launch({ headless: true, executablePath: executablePath(), args: args });
   const page = await browser.newPage();
   await page.setUserAgent(
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.117 Safari/537.36"
