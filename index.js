@@ -25,6 +25,9 @@ const handleMatched = function (matches, result) {
         meta.find((spec) => spec.name === "side_away") || {};
       const { value: sideHome } =
         meta.find((spec) => spec.name === "side_home") || {};
+      const { value: map_value } =
+        meta.find((spec) => spec.name === "map") || {};
+      const mapList = eval(map_value)
 
       const { value: bo } = meta.find((spec) => spec.name === "bo") || {};
 
@@ -75,6 +78,7 @@ const handleMatched = function (matches, result) {
         },
         markets: filtered_markets,
         mapIndex,
+        mapList,
         tournamentName,
         tournamentId,
         bo,
