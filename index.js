@@ -27,7 +27,7 @@ const handleMatched = function (matches, result) {
         meta.find((spec) => spec.name === "side_home") || {};
       const { value: map_value } =
         meta.find((spec) => spec.name === "map") || {};
-      const mapList = eval(map_value)
+      const mapList = JSON.parse(map_value)
 
       const { value: bo } = meta.find((spec) => spec.name === "bo") || {};
 
